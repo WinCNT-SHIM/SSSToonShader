@@ -2,8 +2,10 @@ Shader "SSSToonShader/URPToonShaderBasic"
 {
     Properties
     {
-       _BaseMap ("BaseMap", 2D) = "white" {}
+        _BaseMap ("BaseMap", 2D) = "white" {}
         _BaseColor ("BaseColor", Color) = (1,1,1,1)
+        [HDR] _SpecularColor ("SpecularPower", Color) = (1,1,1,1)
+        _SpecularPower ("SpecularPower", Float) = 10.0
     }
     SubShader
     {
@@ -42,6 +44,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 float2 uv           : TEXCOORD0;
                 float3 normal       : TEXCOORD1;
                 float3 lightDir     : TEXCOORD2;
+                float3 viewDir      : TEXCOORD3;
             };
 
             // 変数
@@ -54,8 +57,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
             CBUFFER_START(UnityPerMaterial)
                 // TilingとOffsetのためにTexture名_STの変数を宣言する
                 float4 _BaseMap_ST;
-                float4 _BaseColor;
-                half _Var;
+                half4 _BaseColor;
+                half4 _SpecularColor;
+                half _SpecularPower;
             CBUFFER_END
 
             //関数
@@ -72,6 +76,10 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);    // TextureName + _ST
                 OUT.normal = TransformObjectToWorldNormal(IN.normalOS);
                 OUT.lightDir = normalize(_MainLightPosition.xyz);
+                
+                const float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz);
+                OUT.viewDir = normalize(_WorldSpaceCameraPos.xyz - positionWS);
+                
                 return OUT;
             }
 
@@ -85,10 +93,22 @@ Shader "SSSToonShader/URPToonShaderBasic"
 
                 // N dot L
                 float NdotL = saturate(dot(IN.normal, IN.lightDir));
-                half3 ambient = SampleSH(IN.normal);    // SH == Spherical Harmonics
+                
+                // Specular(BlinnPhong)
+                float3 halfDir = normalize(IN.lightDir + IN.viewDir);
+                //float3 reflectDir = reflect(-IN.lightDir, IN.normal);
+                half spec = saturate(dot(halfDir, IN.normal));
+                spec = pow(spec, max(_SpecularPower, 0.0));
+                const half3 specColor = spec * _SpecularColor.rgb;
+                
+                // Ambient
+                half3 ambient = SampleSH(IN.normal);    // SH => Spherical Harmonics
+
+                // Lighting
                 half3 lighting = NdotL * _MainLightColor.rgb + ambient;
                 color.rgb *= lighting;
-                
+                color.rgb += specColor;
+
                 return color;
             }
             ENDHLSL
