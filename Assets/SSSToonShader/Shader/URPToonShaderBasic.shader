@@ -2,7 +2,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
 {
     Properties
     {
-        _MainTex ("BaseMap", 2D) = "white" {}
+       _BaseMap ("BaseMap", 2D) = "white" {}
         _BaseColor ("BaseColor", Color) = (1,1,1,1)
     }
     SubShader
@@ -18,10 +18,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
         {
             // The HLSL code block. Unity SRP uses the HLSL language.
             HLSLPROGRAM
-            // This line defines the name of the vertex shader.
             // 頂点シェーダの名前を定義する
             #pragma vertex vert
-            // This line defines the name of the fragment shader.
             // フラグメントシェーダーの名前を定義する
             #pragma fragment frag
             
@@ -33,29 +31,39 @@ Shader "SSSToonShader/URPToonShaderBasic"
             struct Attributes
             {
                 float4 positionOS   : POSITION;
+                float2 uv           : TEXCOORD0;
             };
 
             struct Varyings
             {
                 float4 positionHCS  : SV_POSITION;
+                float2 uv           : TEXCOORD0;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            float4 _BaseColor;
-
+            TEXTURE2D(_BaseMap);
+            SAMPLER(sampler_BaseMap);
+            
+            // SRP Batcher の互換性を確保するため、MaterialのすべてのPropertiesを単一の「CBUFFER」ブロック内で
+            // 「UnityPerMaterial」という名前で宣言する必要がある（Texture, Samplerは除く）
+            CBUFFER_START(UnityPerMaterial)
+                // TilingとOffsetのためにTexture名_STの変数を宣言する
+                float4 _BaseMap_ST;
+                float4 _BaseColor;
+            CBUFFER_END
+            
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
                 OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                OUT.uv = TRANSFORM_TEX(IN.uv, _BaseMap);    // Texture名_STがないとエラーになる
                 return OUT;
             }
 
-            half4 frag() : SV_Target
+            half4 frag(Varyings IN) : SV_Target
             {
-                //half4 customColor = half4(0, 1, 0, 1);
-                half4 customColor = half4(_BaseColor);
-                return customColor;
+                half4 color = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
+                color *= _BaseColor;
+                return color;
             }
             ENDHLSL
         }
