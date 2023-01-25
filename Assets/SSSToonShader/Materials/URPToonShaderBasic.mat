@@ -116,7 +116,7 @@ Material:
     - _SmoothnessTextureChannel: 0
     - _SpecularColor: 10
     - _SpecularHighlights: 1
-    - _SpecularPower: 10
+    - _SpecularPower: 7.29
     - _SrcBlend: 1
     - _Surface: 0
     - _Var: 0
