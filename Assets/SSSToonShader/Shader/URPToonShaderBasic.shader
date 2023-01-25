@@ -4,6 +4,13 @@ Shader "SSSToonShader/URPToonShaderBasic"
     {
         _BaseMap ("BaseMap", 2D) = "white" {}
         _BaseColor ("BaseColor", Color) = (1,1,1,1)
+        
+        _ShadowColor ("ShadowColor", Float ) = 0
+        _ShadowColor1 ("ShadowColor1", Color) = (1,1,1,1)
+        _ShadowColor2 ("ShadowColor2", Color) = (1,1,1,1)
+        _ShadowPower1 ("ShadowPower1", Range(0, 1.0)) = 0.5
+        _ShadowPower2 ("ShadowPower2", Range(0, 1.0)) = 0
+        
         [HDR] _SpecularColor ("SpecularPower", Color) = (1,1,1,1)
         _SpecularPower ("SpecularPower", Float) = 10.0
     }
@@ -47,22 +54,28 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 float3 viewDir      : TEXCOORD3;
             };
 
-            // 変数
+/// 変数
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
 
-            // Constant Buffer
+/// 定数変数（Constant Buffer）
             // SRP Batcher の互換性を確保するため、MaterialのすべてのPropertiesを単一の「CBUFFER」ブロック内で
             // 「UnityPerMaterial」という名前で宣言する必要がある（Texture, Samplerは除く）
             CBUFFER_START(UnityPerMaterial)
                 // TilingとOffsetのためにTexture名_STの変数を宣言する
                 float4 _BaseMap_ST;
                 half4 _BaseColor;
+            
+                half4 _ShadowColor1;
+                half4 _ShadowColor2;
+                float _ShadowPower1;
+                float _ShadowPower2;
+            
                 half4 _SpecularColor;
                 half _SpecularPower;
             CBUFFER_END
 
-            //関数
+///関数
             void BlackOffset(inout half3 color, in half var)
             {
                 color -= var;
@@ -91,24 +104,47 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half4 color = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
                 color *= _BaseColor;
 
-                // N dot L
-                float NdotL = saturate(dot(IN.normal, IN.lightDir));
+/// Lighting
+                // Half Lambert
+                float halfLambert = 0.5 * dot(IN.normal, IN.lightDir) + 0.5;
                 
-                // Specular(BlinnPhong)
-                float3 halfDir = normalize(IN.lightDir + IN.viewDir);
-                //float3 reflectDir = reflect(-IN.lightDir, IN.normal);
-                half spec = saturate(dot(halfDir, IN.normal));
-                spec = pow(spec, max(_SpecularPower, 0.0));
-                const half3 specColor = spec * _SpecularColor.rgb;
+                // Three Tone Shading
+                // エッジを柔らかくするための変数、とりあえず実数値（必要に応じてPropertyにする）
+                const float  _ToonFeather_BaseAnd1st = 0.0001; // Base Colorと1影のエッジ
+                const float  _ToonFeather_1stAnd2nd = 0.0001;  // 1影、2影のエッジ
+                // Mapで影の落ち具合を調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
+                const float3  _ShadowMap_1st = { 1.0, 1.0, 1.0 };
+                const float3  _ShadowMap_2nd = { 1.0, 1.0, 1.0 };
+
+                const float _SystemShadowsLevel_var = 0.0001;
+
+                // Base Colorと1影を分けるための値を計算する
+                const float _FinalShadowMask = saturate(
+                    1.0
+                    + (
+                        (lerp(halfLambert, halfLambert * saturate(_SystemShadowsLevel_var), 0.0001)
+                        - (_ShadowPower1 - _ToonFeather_BaseAnd1st)) * ((1.0 - _ShadowMap_1st.rgb).r - 1.0)
+                    )
+                    / _ToonFeather_BaseAnd1st
+                );
+
+                // 1影と2影を閾値で分けた色を、上で計算した値でLerpする
+                const float3 _FinalBaseColor = lerp(
+                    _BaseColor,
+                    lerp(
+                        _ShadowColor1,
+                        _ShadowColor2,
+                        saturate(
+                            1.0
+                            + ((halfLambert - (_ShadowPower2 -_ToonFeather_1stAnd2nd)) * ((1.0 - _ShadowMap_2nd.rgb).r - 1.0))
+                            / _ToonFeather_1stAnd2nd
+                        )
+                    ),
+                    _FinalShadowMask
+                );
                 
-                // Ambient
-                half3 ambient = SampleSH(IN.normal);    // SH => Spherical Harmonics
-
-                // Lighting
-                half3 lighting = NdotL * _MainLightColor.rgb + ambient;
-                color.rgb *= lighting;
-                color.rgb += specColor;
-
+                color.rgb = _FinalBaseColor;
+                
                 return color;
             }
             ENDHLSL
