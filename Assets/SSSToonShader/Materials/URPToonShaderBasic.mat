@@ -47,14 +47,14 @@ Material:
     - _BaseColor_Step: 0
     - _ExampleName: 0
     - _Is_Filter_HiCutPointLightColor: 1
-    - _RimPower: 0.278
-    - _RimThreshold: 0.1
+    - _RimPower: 0
+    - _RimThreshold: 0
     - _Set_FinalShadowMask: 0.51
     - _ShadowColor: 0
     - _ShadowPower1: 0.5
     - _ShadowPower2: 0.25
     - _ShadowPowerStep: 0.5
-    - _SpecularPower: 500
+    - _SpecularPower: 0.45
     - _StepOffset: 0
     - _ToonFeather_BaseAnd1st: 0.028
     - __Set_1st_ShadePosition_var: 0

@@ -12,7 +12,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _ShadowPower2 ("ShadowPower2", Range(0, 1.0)) = 0
         
         [HDR] _SpecularColor ("SpecularColor", Color) = (1,1,1,1)
-        _SpecularPower ("SpecularPower", Float) = 10.0
+        _SpecularPower ("SpecularPower", Range(0, 1.0)) = 0.5
         
         _RimColor ("RimColor", Color) = (1,1,1,1)
         _RimPower ("RimPower", Range(0, 1.0)) = 0.7
@@ -118,7 +118,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
 /// Lighting
 /// Three Tone Shading
                 // Half Lambert
-                float halfLambert = 0.5 * dot(IN.normal, IN.lightDir) + 0.5;
+                const float halfLambert = 0.5 * dot(IN.normal, IN.lightDir) + 0.5;
                 
                 // エッジを柔らかくするための変数、とりあえず実数値（必要に応じてPropertyにする）
                 const float  _ToonFeather_BaseAnd1st = 0.0001; // Base Colorと1影のエッジ
@@ -165,20 +165,63 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 finalColor.rgb = _FinalBaseColor.rgb;
 
 /// Specular
-                // Tutorial
-                float specularIntensity = pow(halfLambert, _SpecularPower);
-                specularIntensity  = smoothstep(0.005, 0.01, specularIntensity);
+                // Half-Angle Vector
+                const float3 halfDir = normalize(IN.lightDir + IN.viewDir); 
+                const float _HalfNdotH = 0.5 * dot(IN.normal, halfDir) + 0.5;
                 
-                finalColor.rgb += (_SpecularColor * specularIntensity).rgb;
+                // SpecluarをHigh Color(くっきり)にするか、一般的なSpecular Light(ぼやける)にするか決める変数
+                // 0 : High Color, 1 : Specular Light
+                const bool _IsHighColorToSpecular = false;
+                // Specular ColorにMain LightColorを混ぜるかを決める変数
+                const bool _IsUseMainLightColor = true;
 
-/// Rim Light
-                // Tutorial
-                _RimPower = 1 - _RimPower;
-                float rimDot = 1 - dot(IN.normal, IN.viewDir);
-                float rimIntensity = rimDot * pow(halfLambert, _RimThreshold);
-                rimIntensity = smoothstep(_RimPower - 0.01, _RimPower + 0.01, rimIntensity);
-                float4 rim = rimIntensity * _RimColor;
-                finalColor += rim;
+                // MapでSpecularを調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
+                const float3  _HighColorMaskMap = { 1.0, 1.0, 1.0 };
+
+                // Half NdotHをX軸にしたStep(Smoothstep)のような形を作る
+                // Half NdotHが1に(つまり、0度に)近くなるほど、正反対になるため、Specularが強くなる
+                // Specular Powerでどの角度で正反対にするかを調整できる
+                const float _HighColorMask =
+                    saturate(_HighColorMaskMap.g)
+                    * lerp(
+                        1.0 - step(_HalfNdotH, 1.0 - pow(_SpecularPower, 5)),
+                        pow(_HalfNdotH, exp2(lerp(11, 1, _SpecularPower))),
+                        _IsHighColorToSpecular
+                    );
+
+                // 上で計算した閾値を使用し、Specular Colorを調整する(設定に応じてとMain Light Colorを混ぜる)
+                const float3 _HighColorOnly =
+                    lerp(
+                        _SpecularColor.rgb,
+                        _SpecularColor.rgb * _MainLightColor.rgb,
+                        _IsUseMainLightColor
+                    )
+                    * _HighColorMask;
+                
+                // Base ColorにSpecularを足す
+                float3 _FinalHighColor =
+                    lerp(
+                        saturate(_FinalBaseColor - _HighColorMask),
+                        _FinalBaseColor,
+                        //lerp(_Is_BlendAddToHiColor, 1.0, _IsHighColorToSpecular)
+                        lerp(0.0, 1.0, _IsHighColorToSpecular)
+                    )
+                    + lerp(
+                        _HighColorOnly,
+                        _HighColorOnly * ((1.0 - _FinalShadowMask)),
+                        0   //_UseTweakHighColorOnShadow
+                    );
+
+                finalColor.rgb += _FinalHighColor.rgb;
+                
+// /// Rim Light
+//                 // Tutorial
+//                 _RimPower = 1 - _RimPower;
+//                 float rimDot = 1 - dot(IN.normal, IN.viewDir);
+//                 float rimIntensity = rimDot * pow(saturate(halfLambert), _RimThreshold);
+//                 rimIntensity = smoothstep(_RimPower - 0.01, _RimPower + 0.01, rimIntensity);
+//                 float4 rim = rimIntensity * _RimColor;
+//                 finalColor += rim;
                 
                 return finalColor;
             }
