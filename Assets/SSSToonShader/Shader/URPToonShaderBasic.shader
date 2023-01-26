@@ -15,7 +15,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _SpecularPower ("SpecularPower", Float) = 10.0
         
         _RimColor ("RimColor", Color) = (1,1,1,1)
-        _RimPower ("RimPower", Float) = 10.0
+        _RimPower ("RimPower", Range(0, 1.0)) = 0.7
+        _RimThreshold ("RimThreshold", Range(0, 1.0)) = 0.1
     }
     SubShader
     {
@@ -79,7 +80,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half _ShadowPower2;     
                 half _SpecularPower;    
                 half _RimPower;
-                half _Padding1; // 66Byte?
+                half _RimThreshold;
                 half _Padding2; // 68Byte?
                 half _Padding3; // 70Byte?
                 half _Padding4; // 72Byte?
@@ -164,12 +165,21 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 finalColor.rgb = _FinalBaseColor.rgb;
 
 /// Specular
-                // Legacy
-                half fvTotalSpecular = pow(halfLambert, _SpecularPower);
-                fvTotalSpecular  = smoothstep(0.005, 0.01, fvTotalSpecular);
+                // Tutorial
+                float specularIntensity = pow(halfLambert, _SpecularPower);
+                specularIntensity  = smoothstep(0.005, 0.01, specularIntensity);
                 
-                finalColor.rgb += (_SpecularColor * fvTotalSpecular).rgb;
+                finalColor.rgb += (_SpecularColor * specularIntensity).rgb;
 
+/// Rim Light
+                // Tutorial
+                _RimPower = 1 - _RimPower;
+                float rimDot = 1 - dot(IN.normal, IN.viewDir);
+                float rimIntensity = rimDot * pow(halfLambert, _RimThreshold);
+                rimIntensity = smoothstep(_RimPower - 0.01, _RimPower + 0.01, rimIntensity);
+                float4 rim = rimIntensity * _RimColor;
+                finalColor += rim;
+                
                 return finalColor;
             }
             ENDHLSL
