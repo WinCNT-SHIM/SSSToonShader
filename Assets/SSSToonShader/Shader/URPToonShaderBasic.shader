@@ -11,7 +11,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _ShadowPower1 ("ShadowPower1", Range(0, 1.0)) = 0.5
         _ShadowPower2 ("ShadowPower2", Range(0, 1.0)) = 0
         
-        [HDR] _SpecularColor ("SpecularPower", Color) = (1,1,1,1)
+        [HDR] _SpecularColor ("SpecularColor", Color) = (1,1,1,1)
         _SpecularPower ("SpecularPower", Float) = 10.0
         
         _RimColor ("RimColor", Color) = (1,1,1,1)
@@ -111,13 +111,14 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // Normal値の正規化
                 IN.normal = normalize(IN.normal);
                 
-                half4 color = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
+                half4 finalColor = { 0.5, 0.5, 0.5, 1.0 };
+                finalColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
 
 /// Lighting
+/// Three Tone Shading
                 // Half Lambert
                 float halfLambert = 0.5 * dot(IN.normal, IN.lightDir) + 0.5;
                 
-                // Three Tone Shading
                 // エッジを柔らかくするための変数、とりあえず実数値（必要に応じてPropertyにする）
                 const float  _ToonFeather_BaseAnd1st = 0.0001; // Base Colorと1影のエッジ
                 const float  _ToonFeather_1stAnd2nd = 0.0001;  // 1影、2影のエッジ
@@ -160,9 +161,16 @@ Shader "SSSToonShader/URPToonShaderBasic"
                     _FinalShadowMask
                 );
                 
-                color.rgb = _FinalBaseColor.rgb;
+                finalColor.rgb = _FinalBaseColor.rgb;
+
+/// Specular
+                // Legacy
+                half fvTotalSpecular = pow(halfLambert, _SpecularPower);
+                fvTotalSpecular  = smoothstep(0.005, 0.01, fvTotalSpecular);
                 
-                return color;
+                finalColor.rgb += (_SpecularColor * fvTotalSpecular).rgb;
+
+                return finalColor;
             }
             ENDHLSL
         }
