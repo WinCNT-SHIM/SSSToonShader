@@ -4,7 +4,9 @@ Shader "Example/URPUnlitShaderBasic"
     // The properties block of the Unity shader. In this example this block is empty
     // because the output color is predefined in the fragment shader code.
     Properties
-    { }
+    {
+        _BaseMap("Albedo", 2D) = "white" {}
+    }
 
     // The SubShader block containing the Shader code.
     SubShader
@@ -66,5 +68,6 @@ Shader "Example/URPUnlitShaderBasic"
             }
             ENDHLSL
         }
+        UsePass "Universal Render Pipeline/Lit/ShadowCaster"
     }
 }
