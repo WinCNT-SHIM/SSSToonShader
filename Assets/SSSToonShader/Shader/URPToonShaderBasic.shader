@@ -13,6 +13,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
         
         [HDR] _SpecularColor ("SpecularPower", Color) = (1,1,1,1)
         _SpecularPower ("SpecularPower", Float) = 10.0
+        
+        _RimColor ("RimColor", Color) = (1,1,1,1)
+        _RimPower ("RimPower", Float) = 10.0
     }
     SubShader
     {
@@ -36,7 +39,6 @@ Shader "SSSToonShader/URPToonShaderBasic"
             // and also contains #include references to other HLSL files
             // (for example, Common.hlsl, SpaceTransforms.hlsl, etc.).
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Attributes
             {
@@ -57,6 +59,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
 /// 変数
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
+            //UNITY_LIGHT_ATTENUATION(Attn);
 
 /// 定数変数（Constant Buffer）
             // SRP Batcher の互換性を確保するため、MaterialのすべてのPropertiesを単一の「CBUFFER」ブロック内で
@@ -64,15 +67,22 @@ Shader "SSSToonShader/URPToonShaderBasic"
             CBUFFER_START(UnityPerMaterial)
                 // TilingとOffsetのためにTexture名_STの変数を宣言する
                 float4 _BaseMap_ST;
-                half4 _BaseColor;
+                //float4 _ShadowMap_1st_ST;
             
+                half4 _BaseColor;
                 half4 _ShadowColor1;
                 half4 _ShadowColor2;
-                float _ShadowPower1;
-                float _ShadowPower2;
-            
                 half4 _SpecularColor;
-                half _SpecularPower;
+                half4 _RimColor;
+
+                half _ShadowPower1;     
+                half _ShadowPower2;     
+                half _SpecularPower;    
+                half _RimPower;
+                half _Padding1; // 66Byte?
+                half _Padding2; // 68Byte?
+                half _Padding3; // 70Byte?
+                half _Padding4; // 72Byte?
             CBUFFER_END
 
 ///関数
@@ -102,7 +112,6 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 IN.normal = normalize(IN.normal);
                 
                 half4 color = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
-                color *= _BaseColor;
 
 /// Lighting
                 // Half Lambert
@@ -116,20 +125,28 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float3  _ShadowMap_1st = { 1.0, 1.0, 1.0 };
                 const float3  _ShadowMap_2nd = { 1.0, 1.0, 1.0 };
 
-                const float _SystemShadowsLevel_var = 0.0001;
+                // システムシャドウのレベル調整するための変数（デフォルトは0で、±0.5の範囲）
+                // 必要に応じてPropertyにする
+                const float _SystemShadowsLevel_var = 0.0;
 
-                // Base Colorと1影を分けるための値を計算する
+                // Base Colorと1影の境界を作るための閾値を計算する
+                // ここでHalf-LambertをX軸にするStep(Smoothstep)のような形を作る
                 const float _FinalShadowMask = saturate(
                     1.0
                     + (
-                        (lerp(halfLambert, halfLambert * saturate(_SystemShadowsLevel_var), 0.0001)
-                        - (_ShadowPower1 - _ToonFeather_BaseAnd1st)) * ((1.0 - _ShadowMap_1st.rgb).r - 1.0)
+                        (lerp(halfLambert, halfLambert * saturate(_SystemShadowsLevel_var), _SystemShadowsLevel_var) - (_ShadowPower1 - _ToonFeather_BaseAnd1st))
+                        * ((1.0 - _ShadowMap_1st.rgb).r - 1.0)
                     )
                     / _ToonFeather_BaseAnd1st
                 );
 
-                // 1影と2影を閾値で分けた色を、上で計算した値でLerpする
-                const float3 _FinalBaseColor = lerp(
+                // Base Colorと1影と2影を決定する
+                // １．まずは1影と2影を決める。
+                // 　　上と同じくHalf-LambertをX軸にするStep(Smoothstep)のような形を作り、それを閾値として1影と2影をLerpさせる
+                // ２．1影と2影の色が決まったら、Base Colorとそれを上で計算した閾値を利用してLerpさせる
+                // 要するに、Half-Lambertの値が1(光を多く受ける)に近いほど、逆に閾値は0に(近く)なり、
+                // Base Color => 1影 => 2影の色になる    
+                const half4 _FinalBaseColor = lerp(
                     _BaseColor,
                     lerp(
                         _ShadowColor1,
@@ -143,7 +160,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                     _FinalShadowMask
                 );
                 
-                color.rgb = _FinalBaseColor;
+                color.rgb = _FinalBaseColor.rgb;
                 
                 return color;
             }
