@@ -35,7 +35,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: a4ffe642be3ea244ebfbe1c19fd0dc49, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Set_1st_ShadePosition:
@@ -47,8 +47,9 @@ Material:
     - _BaseColor_Step: 0
     - _ExampleName: 0
     - _Is_Filter_HiCutPointLightColor: 1
-    - _RimPower: 0.092
-    - _RimThreshold: 0.0001
+    - _RimFeather: 0
+    - _RimPower: 0.815
+    - _RimThreshold: 0.267
     - _Set_FinalShadowMask: 0.51
     - _ShadowColor: 0
     - _ShadowPower1: 0.5
