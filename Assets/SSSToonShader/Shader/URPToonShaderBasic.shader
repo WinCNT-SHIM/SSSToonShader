@@ -222,7 +222,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
 //                 float4 rim = rimIntensity * _RimColor;
 //                 finalColor += rim;
                 
-                return finalColor;
+                return _FinalColor;
             }
             ENDHLSL
         }
