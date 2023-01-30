@@ -47,22 +47,22 @@ Material:
     - _BaseColor_Step: 0
     - _ExampleName: 0
     - _Is_Filter_HiCutPointLightColor: 1
-    - _RimPower: 1
-    - _RimThreshold: 1
+    - _RimPower: 0.092
+    - _RimThreshold: 0.0001
     - _Set_FinalShadowMask: 0.51
     - _ShadowColor: 0
     - _ShadowPower1: 0.5
     - _ShadowPower2: 0.25
     - _ShadowPowerStep: 0.5
-    - _SpecularPower: 0.3
+    - _SpecularPower: 0
     - _StepOffset: 0
     - _ToonFeather_BaseAnd1st: 0.028
     - __Set_1st_ShadePosition_var: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 0, b: 0, a: 1}
     - _ExampleName: {r: 0, g: 0, b: 0, a: 0}
-    - _RimColor: {r: 0, g: 1, b: 0, a: 1}
+    - _RimColor: {r: 1, g: 1, b: 1, a: 1}
     - _ShadowColor1: {r: 0.47058824, g: 0, b: 0, a: 1}
     - _ShadowColor2: {r: 0.254717, g: 0, b: 0, a: 1}
-    - _SpecularColor: {r: 1, g: 0.4575472, b: 0.4575472, a: 1}
+    - _SpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []

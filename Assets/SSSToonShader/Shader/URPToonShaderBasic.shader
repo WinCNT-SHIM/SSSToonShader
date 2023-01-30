@@ -109,8 +109,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
 
             half4 frag(Varyings IN) : SV_Target
             {
-                // Normal値の正規化
+                // 正規化
                 IN.normal = normalize(IN.normal);
+                IN.viewDir = normalize(IN.viewDir);
                 
                 half4 _FinalColor = { 0.5, 0.5, 0.5, 1.0 };
                 _FinalColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
@@ -167,11 +168,11 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float3 halfDir = normalize(IN.lightDir + IN.viewDir); 
                 const float _HalfNdotH = 0.5 * dot(IN.normal, halfDir) + 0.5;
                 
-                // SpecluarをHigh Color(くっきり)にするか、一般的なSpecular Light(ぼやける)にするか決める変数
+                // Specluarの境界をHigh Color(くっきり)にするか、一般的なSpecular Light(ぼやける)にするか決める変数
                 // 0 : High Color, 1 : Specular Light
                 const bool _IsHighColorToSpecular = false;
                 // Specular ColorにMain LightColorを混ぜるかを決める変数
-                const bool _IsUseMainLightColor = true;
+                const bool _UseMainLightColorForSpec = true;
                 // MapでSpecularを調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
                 const float3  _HighColorMaskMap = { 1.0, 1.0, 1.0 };
 
@@ -191,7 +192,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                     lerp(
                         _SpecularColor.rgb,
                         _SpecularColor.rgb * _MainLightColor.rgb,
-                        _IsUseMainLightColor
+                        _UseMainLightColorForSpec
                     )
                     * _HighColorMask;
                 
@@ -212,15 +213,44 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // Specularを足す
                 _FinalColor.rgb += _FinalHighColor.rgb;
                 
+/// Rim Light
+                // Rim ColorにMain LightColorを混ぜるかを決める変数（必要に応じてPropertyにする）
+                const bool _UseRimLight = true;
+                // Rim ColorにMain LightColorを混ぜるかを決める変数（必要に応じてPropertyにする）
+                const bool _UseMainLightColorForRim = false;
+                // MapでRim Lightを調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
+                const float3  _RimLightMaskMap = { 1.0, 1.0, 1.0 };
+                // Rim Lightの境界をくっきりにするか、ぼやけるか決める変数（必要に応じてPropertyにする）
+                // 0 : ぼやける, 1 : くっきり
+                const bool _RimLight_FeatherOff = false;
+                // システムリムライトのレベル調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
+                const float _SystemRimLightMaskLevel = 0.0;
+                // 光源方向リムマスクのレベルを調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
+                const float _SystemLightDirMaskLevel = 0.0;
                 
-// /// Rim Light
-//                 // Tutorial
-//                 _RimPower = 1 - _RimPower;
-//                 float rimDot = 1 - dot(IN.normal, IN.viewDir);
-//                 float rimIntensity = rimDot * pow(saturate(halfLambert), _RimThreshold);
-//                 rimIntensity = smoothstep(_RimPower - 0.01, _RimPower + 0.01, rimIntensity);
-//                 float4 rim = rimIntensity * _RimColor;
-//                 finalColor += rim;
+                // Rim Colorを調整する。
+                _RimColor.rgb = lerp(_RimColor.rgb, _RimColor.rgb * _MainLightColor.rgb, _UseMainLightColorForRim);
+
+                // （1.0 - NormalとViewを内積）で輪郭周りを抽出する
+                float _RimDot = saturate(1.0 - dot(IN.normal, IN.viewDir));
+                // Rim LightのPowerを調整する
+                _RimPower = pow(abs(_RimDot), exp2(lerp(3.0, 0.0, _RimPower)));
+                // Rim Lightをマスクする範囲を調整する
+                float _RimInsideMask = saturate(lerp( (0.0 + ( (_RimPower - _RimThreshold) * (1.0 - 0.0) ) / (1.0 - _RimThreshold)), step(_RimThreshold, _RimPower), _RimLight_FeatherOff ));
+                
+                // 閾値調整、RimThresholdが1の場合はRim Lightを消す
+                _RimInsideMask = lerp(_RimInsideMask, 0.0, step(1.0, _RimThreshold));
+
+                // Rim Lightが
+                const half3 _LightDirMaskOn = _RimColor * saturate(_RimInsideMask - ((1.0 - _HalfLambert) + _SystemLightDirMaskLevel));
+
+                UNITY_MATRIX_V[0];
+                
+                // 最終的なRim Lightを計算する
+                float3 _FinalRimLight = saturate((_RimLightMaskMap.g + _SystemRimLightMaskLevel)) * _LightDirMaskOn;
+
+                // Rim Lightを足す
+                _FinalColor.rgb = lerp(_FinalColor.rgb, (_FinalColor.rgb + _FinalRimLight.rgb), _UseRimLight);
                 
                 return _FinalColor;
             }
