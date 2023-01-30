@@ -15,8 +15,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _SpecularPower ("SpecularPower", Range(0, 1.0)) = 0.5
         
         _RimColor ("RimColor", Color) = (1,1,1,1)
-        _RimPower ("RimPower", Range(0, 1.0)) = 0.7
-        _RimThreshold ("RimThreshold", Range(0, 1.0)) = 0.1
+        _RimPower ("RimPower", Range(0, 1.0)) = 0.1
+        _RimThreshold ("RimThreshold", Range(0.0001, 1)) = 0.0001
     }
     SubShader
     {
@@ -112,13 +112,13 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // Normal値の正規化
                 IN.normal = normalize(IN.normal);
                 
-                half4 finalColor = { 0.5, 0.5, 0.5, 1.0 };
-                finalColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
+                half4 _FinalColor = { 0.5, 0.5, 0.5, 1.0 };
+                _FinalColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
 
 /// Lighting
 /// Three Tone Shading
                 // Half Lambert
-                const float halfLambert = 0.5 * dot(IN.normal, IN.lightDir) + 0.5;
+                const float _HalfLambert = 0.5 * dot(IN.normal, IN.lightDir) + 0.5;
                 
                 // エッジを柔らかくするための変数、とりあえず実数値（必要に応じてPropertyにする）
                 const float  _ToonFeather_BaseAnd1st = 0.0001; // Base Colorと1影のエッジ
@@ -126,17 +126,15 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // Mapで影の落ち具合を調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
                 const float3  _ShadowMap_1st = { 1.0, 1.0, 1.0 };
                 const float3  _ShadowMap_2nd = { 1.0, 1.0, 1.0 };
-
-                // システムシャドウのレベル調整するための変数（デフォルトは0で、±0.5の範囲）
-                // 必要に応じてPropertyにする
-                const float _SystemShadowsLevel_var = 0.0;
+                // システム陰影のレベル調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
+                const float _SystemShadowsLevel = 0.0;
 
                 // Base Colorと1影の境界を作るための閾値を計算する
                 // ここでHalf-LambertをX軸にするStep(Smoothstep)のような形を作る
                 const float _FinalShadowMask = saturate(
                     1.0
                     + (
-                        (lerp(halfLambert, halfLambert * saturate(_SystemShadowsLevel_var), _SystemShadowsLevel_var) - (_ShadowPower1 - _ToonFeather_BaseAnd1st))
+                        (lerp(_HalfLambert, _HalfLambert * saturate(_SystemShadowsLevel), _SystemShadowsLevel) - (_ShadowPower1 - _ToonFeather_BaseAnd1st))
                         * ((1.0 - _ShadowMap_1st.rgb).r - 1.0)
                     )
                     / _ToonFeather_BaseAnd1st
@@ -155,14 +153,14 @@ Shader "SSSToonShader/URPToonShaderBasic"
                         _ShadowColor2,
                         saturate(
                             1.0
-                            + ((halfLambert - (_ShadowPower2 -_ToonFeather_1stAnd2nd)) * ((1.0 - _ShadowMap_2nd.rgb).r - 1.0))
+                            + ((_HalfLambert - (_ShadowPower2 -_ToonFeather_1stAnd2nd)) * ((1.0 - _ShadowMap_2nd.rgb).r - 1.0))
                             / _ToonFeather_1stAnd2nd
                         )
                     ),
                     _FinalShadowMask
                 );
                 
-                finalColor.rgb = _FinalBaseColor.rgb;
+                _FinalColor.rgb = _FinalBaseColor.rgb;
 
 /// Specular
                 // Half-Angle Vector
@@ -174,7 +172,6 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const bool _IsHighColorToSpecular = false;
                 // Specular ColorにMain LightColorを混ぜるかを決める変数
                 const bool _IsUseMainLightColor = true;
-
                 // MapでSpecularを調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
                 const float3  _HighColorMaskMap = { 1.0, 1.0, 1.0 };
 
@@ -185,7 +182,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                     saturate(_HighColorMaskMap.g)
                     * lerp(
                         1.0 - step(_HalfNdotH, 1.0 - pow(_SpecularPower, 5)),
-                        pow(_HalfNdotH, exp2(lerp(11, 1, _SpecularPower))),
+                        pow(abs(_HalfNdotH), exp2(lerp(11, 1, _SpecularPower))),
                         _IsHighColorToSpecular
                     );
 
@@ -199,7 +196,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                     * _HighColorMask;
                 
                 // Base ColorにSpecularを足す
-                float3 _FinalHighColor =
+                half3 _FinalHighColor =
                     lerp(
                         saturate(_FinalBaseColor - _HighColorMask),
                         _FinalBaseColor,
@@ -212,7 +209,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
                         0   //_UseTweakHighColorOnShadow
                     );
 
-                finalColor.rgb += _FinalHighColor.rgb;
+                // Specularを足す
+                _FinalColor.rgb += _FinalHighColor.rgb;
+                
                 
 // /// Rim Light
 //                 // Tutorial
