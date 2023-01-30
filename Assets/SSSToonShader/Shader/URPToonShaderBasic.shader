@@ -5,7 +5,6 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _BaseMap ("BaseMap", 2D) = "white" {}
         _BaseColor ("BaseColor", Color) = (1,1,1,1)
         
-        _ShadowColor ("ShadowColor", Float ) = 0
         _ShadowColor1 ("ShadowColor1", Color) = (1,1,1,1)
         _ShadowColor2 ("ShadowColor2", Color) = (1,1,1,1)
         _ShadowPower1 ("ShadowPower1", Range(0, 1.0)) = 0.5
