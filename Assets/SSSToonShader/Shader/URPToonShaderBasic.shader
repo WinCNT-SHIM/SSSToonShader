@@ -215,42 +215,40 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 
 /// Rim Light
                 // Rim ColorにMain LightColorを混ぜるかを決める変数（必要に応じてPropertyにする）
-                const bool _UseRimLight = true;
+                const bool _UseRim = true;
                 // Rim ColorにMain LightColorを混ぜるかを決める変数（必要に応じてPropertyにする）
                 const bool _UseMainLightColorForRim = false;
                 // MapでRim Lightを調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
-                const float3  _RimLightMaskMap = { 1.0, 1.0, 1.0 };
+                const float3  _RimMaskMap = { 1.0, 1.0, 1.0 };
                 // Rim Lightの境界をくっきりにするか、ぼやけるか決める変数（必要に応じてPropertyにする）
                 // 0 : ぼやける, 1 : くっきり
-                const bool _RimLight_FeatherOff = false;
+                const float _RimFeatherOff = 0.0f;
                 // システムリムライトのレベル調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
-                const float _SystemRimLightMaskLevel = 0.0;
+                const float _SysRimMaskLevel = 0.0;
                 // 光源方向リムマスクのレベルを調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
-                const float _SystemLightDirMaskLevel = 0.0;
+                const float _SysLightDirMaskLevelForRim = 0.0;
                 
                 // Rim Colorを調整する。
                 _RimColor.rgb = lerp(_RimColor.rgb, _RimColor.rgb * _MainLightColor.rgb, _UseMainLightColorForRim);
 
                 // （1.0 - NormalとViewを内積）で輪郭周りを抽出する
                 float _RimDot = saturate(1.0 - dot(IN.normal, IN.viewDir));
-                // Rim LightのPowerを調整する
+                // Rim LightのPowerを調整する（マジックナンバーを使う）
                 _RimPower = pow(abs(_RimDot), exp2(lerp(3.0, 0.0, _RimPower)));
                 // Rim Lightをマスクする範囲を調整する
-                float _RimInsideMask = saturate(lerp( (0.0 + ( (_RimPower - _RimThreshold) * (1.0 - 0.0) ) / (1.0 - _RimThreshold)), step(_RimThreshold, _RimPower), _RimLight_FeatherOff ));
+                float _RimInsideMask = saturate(lerp( (0.0 + ( (_RimPower - _RimThreshold) * (1.0 - 0.0) ) / (1.0 - _RimThreshold)), step(_RimThreshold, _RimPower), _RimFeatherOff ));
                 
                 // 閾値調整、RimThresholdが1の場合はRim Lightを消す
                 _RimInsideMask = lerp(_RimInsideMask, 0.0, step(1.0, _RimThreshold));
 
-                // Rim Lightが
-                const half3 _LightDirMaskOn = _RimColor * saturate(_RimInsideMask - ((1.0 - _HalfLambert) + _SystemLightDirMaskLevel));
-
-                UNITY_MATRIX_V[0];
+                // Rim LightがHalf-Lambertによってマスクされるように調整する（つまり陰が強くなるほどRim Lightが弱くなる）
+                const half3 _LightDirMaskOnForRim = _RimColor * saturate(_RimInsideMask - ((1.0 - _HalfLambert) + _SysLightDirMaskLevelForRim));
                 
                 // 最終的なRim Lightを計算する
-                float3 _FinalRimLight = saturate((_RimLightMaskMap.g + _SystemRimLightMaskLevel)) * _LightDirMaskOn;
+                float3 _FinalRim = saturate((_RimMaskMap.g + _SysRimMaskLevel)) * _LightDirMaskOnForRim;
 
                 // Rim Lightを足す
-                _FinalColor.rgb = lerp(_FinalColor.rgb, (_FinalColor.rgb + _FinalRimLight.rgb), _UseRimLight);
+                _FinalColor.rgb = lerp(_FinalColor.rgb, (_FinalColor.rgb + _FinalRim.rgb), _UseRim);
                 
                 return _FinalColor;
             }
