@@ -174,9 +174,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float3 _HalfDir = normalize(IN.lightDir + IN.viewDir); 
                 const float _HalfNdotH = 0.5 * dot(IN.normal, _HalfDir) + 0.5;
                 
-                // Specluarの境界をHigh Color(くっきり)にするか、一般的なSpecular Light(ぼやける)にするか決める変数
-                // 0 : High Color, 1 : Specular Light
-                const bool _IsHighColorToSpecular = false;
+                // Specluarの境界をくっきりにするか、ぼやけるか決める変数（必要に応じてPropertyにする）
+                // 0 : ぼやける, 1 : くっきり
+                const bool _IsHighColorToSpecular = true;
                 // Specular ColorにMain LightColorを混ぜるかを決める変数
                 const bool _UseMainLightColorForSpec = true;
                 // MapでSpecularを調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
@@ -188,8 +188,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float _HighColorMask =
                     saturate(_HighColorMaskMap.g)
                     * lerp(
-                        1.0 - step(_HalfNdotH, 1.0 - pow(_SpecularPower, 5)),
-                        pow(abs(_HalfNdotH), exp2(lerp(11, 1, _SpecularPower))),
+                        pow(abs(_HalfNdotH), exp2(lerp(11, 1, _SpecularPower))),    // Specluarの境界をぼやける
+                        1.0 - step(_HalfNdotH, 1.0 - pow(_SpecularPower, 5)),       // Specluarの境界をくっきりにする
                         _IsHighColorToSpecular
                     );
 
