@@ -55,7 +55,7 @@ Material:
     - _ShadowPower1: 0.5
     - _ShadowPower2: 0.25
     - _ShadowPowerStep: 0.5
-    - _SpecularPower: 0
+    - _SpecularPower: 0.5
     - _StepOffset: 0
     - _ToonFeather_BaseAnd1st: 0.028
     - __Set_1st_ShadePosition_var: 0
@@ -65,5 +65,5 @@ Material:
     - _RimColor: {r: 0, g: 0, b: 0, a: 1}
     - _ShadowColor1: {r: 0.47058824, g: 0, b: 0, a: 1}
     - _ShadowColor2: {r: 0.254717, g: 0, b: 0, a: 1}
-    - _SpecularColor: {r: 0, g: 0, b: 0, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

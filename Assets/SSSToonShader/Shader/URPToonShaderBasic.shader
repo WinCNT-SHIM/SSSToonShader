@@ -194,13 +194,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                     );
 
                 // 上で計算した閾値を使用し、Specular Colorを調整する(設定に応じてとMain Light Colorを混ぜる)
-                const float3 _HighColorOnly =
-                    lerp(
-                        _SpecularColor.rgb,
-                        _SpecularColor.rgb * _MainLightColor.rgb,
-                        _UseMainLightColorForSpec
-                    )
-                    * _HighColorMask;
+                const float3 _HighColorOnly = lerp(_SpecularColor.rgb, _SpecularColor.rgb * _MainLightColor.rgb, _UseMainLightColorForSpec) * _HighColorMask;
                 
                 // Base ColorにSpecularを足す
                 half3 _FinalHighColor =
