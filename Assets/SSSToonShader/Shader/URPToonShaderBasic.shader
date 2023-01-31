@@ -16,6 +16,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _RimColor ("RimColor", Color) = (1,1,1,1)
         _RimPower ("RimPower", Range(0, 1.0)) = 0.1
         _RimThreshold ("RimThreshold", Range(0.0001, 1)) = 0.0001
+        
+        _RimHorizonOffset ("RimHorizonOffset", Range(0, 1)) = 0
+        _RimVerticalOffset ("RimVerticalOffset", Range(0, 1)) = 0
     }
     SubShader
     {
@@ -80,8 +83,10 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half _SpecularPower;    
                 half _RimPower;
                 half _RimThreshold;
-                half _Padding2; // 68Byte?
-                half _Padding3; // 70Byte?
+                // half _Padding2; // 68Byte?
+                // half _Padding3; // 70Byte?
+                half _RimHorizonOffset;
+                half _RimVerticalOffset;
                 half _Padding4; // 72Byte?
             CBUFFER_END
 
@@ -222,12 +227,40 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float _SysRimMaskLevel = 0.0;
                 // 光源方向リムマスクのレベルを調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
                 const float _SysLightDirMaskLevelForRim = 0.0;
+
+                
+                // Rim Lightの角度を調整する
+                float3 _RimViewFix = IN.viewDir;
+
+                // 値をラジアンに変更
+                _RimHorizonOffset = _RimHorizonOffset * 360 * PI / 180;
+                _RimVerticalOffset = _RimVerticalOffset * 360 * PI / 180;
+
+                // Viewを水平方向に回せるための行列
+                float4x4 _RotateHorizion;
+                ZERO_INITIALIZE(float4x4, _RotateHorizion);
+                _RotateHorizion[0][0] = cos(_RimHorizonOffset);     _RotateHorizion[0][1] = 0.0;   _RotateHorizion[0][2] = sin(_RimHorizonOffset);  _RotateHorizion[0][3] = 0.0;
+                _RotateHorizion[1][0] = 0.0;                        _RotateHorizion[1][1] = 1.0;   _RotateHorizion[1][2] = 0.0;                     _RotateHorizion[1][3] = 0.0;
+                _RotateHorizion[2][0] = -sin(_RimHorizonOffset);    _RotateHorizion[2][1] = 0.0;   _RotateHorizion[2][2] = cos(_RimHorizonOffset);  _RotateHorizion[2][3] = 0.0;
+                _RotateHorizion[3][0] = 0.0;                        _RotateHorizion[3][1] = 0.0;   _RotateHorizion[3][2] = 0.0;                     _RotateHorizion[3][3] = 1.0;
+
+                // Viewを垂直方向に回せるための行列
+                float4x4 _RotateVertical;
+                ZERO_INITIALIZE(float4x4, _RotateVertical);
+                _RotateVertical[0][0] = 1.0;    _RotateVertical[0][1] = 0.0;                        _RotateVertical[0][2] = 0.0;                        _RotateVertical[0][3] = 0.0;
+                _RotateVertical[1][0] = 0.0;    _RotateVertical[1][1] = cos(_RimVerticalOffset);    _RotateVertical[1][2] = sin(_RimVerticalOffset);    _RotateVertical[1][3] = 0.0;
+                _RotateVertical[2][0] = 0.0;    _RotateVertical[2][1] = -sin(_RimVerticalOffset);   _RotateVertical[2][2] = cos(_RimVerticalOffset);    _RotateVertical[2][3] = 0.0;
+                _RotateVertical[3][0] = 0.0;    _RotateVertical[3][1] = 0.0;                        _RotateVertical[3][2] = 0.0;                        _RotateVertical[3][3] = 1.0;
+                
+                // Viewベクトルをオフセットで作った行列で変換させる
+                _RimViewFix = mul(mul(_RotateHorizion, _RotateVertical), _RimViewFix);
                 
                 // Rim Colorを調整する。
                 _RimColor.rgb = lerp(_RimColor.rgb, _RimColor.rgb * _MainLightColor.rgb, _UseMainLightColorForRim);
-
+                
                 // （1.0 - NormalとViewを内積）で輪郭周りを抽出する
-                float _RimDot = saturate(1.0 - dot(IN.normal, IN.viewDir));
+                //float _RimDot = saturate(1.0 - dot(IN.normal, _RimView));
+                float _RimDot = saturate(1.0 - dot(IN.normal, _RimViewFix));
                 // Rim LightのPowerを調整する（マジックナンバーを使う）
                 _RimPower = pow(abs(_RimDot), exp2(lerp(3.0, 0.0, _RimPower)));
                 // Rim Lightをマスクする範囲を調整する
