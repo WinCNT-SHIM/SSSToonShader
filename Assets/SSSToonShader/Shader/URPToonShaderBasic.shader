@@ -121,23 +121,29 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float _HalfLambert = 0.5 * dot(IN.normal, IN.lightDir) + 0.5;
                 
                 // エッジを柔らかくするための変数、とりあえず実数値（必要に応じてPropertyにする）
-                const float  _ToonFeather_BaseAnd1st = 0.0001; // Base Colorと1影のエッジ
-                const float  _ToonFeather_1stAnd2nd = 0.0001;  // 1影、2影のエッジ
+                const float  _ToonFeatherBaseTo1st = 0.0001; // Base Colorと1影のエッジ
+                const float  _ToonFeather1stTo2nd = 0.0001;  // 1影、2影のエッジ
                 // Mapで影の落ち具合を調整するための変数、とりあえず実数値（必要に応じてPropertyにする）
-                const float3  _ShadowMap_1st = { 1.0, 1.0, 1.0 };
-                const float3  _ShadowMap_2nd = { 1.0, 1.0, 1.0 };
+                const float3  _ShadowMap1st = { 1.0, 1.0, 1.0 };
+                const float3  _ShadowMap2nd = { 1.0, 1.0, 1.0 };
                 // システム陰影のレベル調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
-                const float _SystemShadowsLevel = 0.0;
+                const float _SysShadowsLevel = 0.0;
 
                 // Base Colorと1影の境界を作るための閾値を計算する
                 // ここでHalf-LambertをX軸にするStep(Smoothstep)のような形を作る
                 const float _FinalShadowMask = saturate(
                     1.0
                     + (
-                        (lerp(_HalfLambert, _HalfLambert * saturate(_SystemShadowsLevel), _SystemShadowsLevel) - (_ShadowPower1 - _ToonFeather_BaseAnd1st))
-                        * ((1.0 - _ShadowMap_1st.rgb).r - 1.0)
+                        (lerp(
+                            _HalfLambert,
+                            _HalfLambert * saturate(_SysShadowsLevel),
+                            _SysShadowsLevel
+                            )
+                            - (_ShadowPower1 - _ToonFeatherBaseTo1st)
+                        )
+                        * ((1.0 - _ShadowMap1st.rgb).r - 1.0)
                     )
-                    / _ToonFeather_BaseAnd1st
+                    / _ToonFeatherBaseTo1st
                 );
 
                 // Base Colorと1影と2影を決定する
@@ -153,19 +159,20 @@ Shader "SSSToonShader/URPToonShaderBasic"
                         _ShadowColor2,
                         saturate(
                             1.0
-                            + ((_HalfLambert - (_ShadowPower2 -_ToonFeather_1stAnd2nd)) * ((1.0 - _ShadowMap_2nd.rgb).r - 1.0))
-                            / _ToonFeather_1stAnd2nd
+                            + ((_HalfLambert - (_ShadowPower2 -_ToonFeather1stTo2nd)) * ((1.0 - _ShadowMap2nd.rgb).r - 1.0))
+                            / _ToonFeather1stTo2nd
                         )
                     ),
                     _FinalShadowMask
                 );
-                
+
+                // Base Colorの設定
                 _FinalColor.rgb = _FinalBaseColor.rgb;
 
 /// Specular
                 // Half-Angle Vector
-                const float3 halfDir = normalize(IN.lightDir + IN.viewDir); 
-                const float _HalfNdotH = 0.5 * dot(IN.normal, halfDir) + 0.5;
+                const float3 _HalfDir = normalize(IN.lightDir + IN.viewDir); 
+                const float _HalfNdotH = 0.5 * dot(IN.normal, _HalfDir) + 0.5;
                 
                 // Specluarの境界をHigh Color(くっきり)にするか、一般的なSpecular Light(ぼやける)にするか決める変数
                 // 0 : High Color, 1 : Specular Light
@@ -176,7 +183,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float3  _HighColorMaskMap = { 1.0, 1.0, 1.0 };
 
                 // Half NdotHをX軸にしたStep(Smoothstep)のような形を作る
-                // Half NdotHが1に(つまり、0度に)近くなるほど、正反対になるため、Specularが強くなる
+                // Half NdotHが1に(つまり、0度に)近くなるほど、正反対に近くなるため、Specularが強くなる
                 // Specular Powerでどの角度で正反対にするかを調整できる
                 const float _HighColorMask =
                     saturate(_HighColorMaskMap.g)
@@ -198,16 +205,11 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // Base ColorにSpecularを足す
                 half3 _FinalHighColor =
                     lerp(
-                        saturate(_FinalBaseColor - _HighColorMask),
-                        _FinalBaseColor,
-                        //lerp(_Is_BlendAddToHiColor, 1.0, _IsHighColorToSpecular)
+                        saturate(_FinalBaseColor.rgb - _HighColorMask),
+                        _FinalBaseColor.rgb,
                         lerp(0.0, 1.0, _IsHighColorToSpecular)
                     )
-                    + lerp(
-                        _HighColorOnly,
-                        _HighColorOnly * ((1.0 - _FinalShadowMask)),
-                        0   //_UseTweakHighColorOnShadow
-                    );
+                    + _HighColorOnly.rgb;
 
                 // Specularを足す
                 _FinalColor.rgb += _FinalHighColor.rgb;
