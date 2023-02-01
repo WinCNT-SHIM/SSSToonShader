@@ -17,8 +17,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _RimPower ("RimPower", Range(0, 1.0)) = 0.1
         _RimThreshold ("RimThreshold", Range(0.0001, 1)) = 0.0001
         
-        _RimHorizonOffset ("RimHorizonOffset", Range(0, 1)) = 0
-        _RimVerticalOffset ("RimVerticalOffset", Range(0, 1)) = 0
+        _RimHorizonOffset ("RimHorizonOffset", Range(-1, 1)) = 0
+        _RimVerticalOffset ("RimVerticalOffset", Range(-1, 1)) = 0
     }
     SubShader
     {
@@ -42,6 +42,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
             // and also contains #include references to other HLSL files
             // (for example, Common.hlsl, SpaceTransforms.hlsl, etc.).
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Attributes
             {
@@ -227,39 +228,18 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float _SysRimMaskLevel = 0.0;
                 // 光源方向リムマスクのレベルを調整するための変数。デフォルトは0で、範囲は±0.5、（必要に応じてPropertyにする）
                 const float _SysLightDirMaskLevelForRim = 0.0;
-
                 
                 // Rim Lightの角度を調整する
                 float3 _RimViewFix = IN.viewDir;
-
-                // 値をラジアンに変更
-                _RimHorizonOffset = _RimHorizonOffset * 360 * PI / 180;
-                _RimVerticalOffset = _RimVerticalOffset * 360 * PI / 180;
-
-                // Viewを水平方向に回せるための行列
-                float4x4 _RotateHorizion;
-                ZERO_INITIALIZE(float4x4, _RotateHorizion);
-                _RotateHorizion[0][0] = cos(_RimHorizonOffset);     _RotateHorizion[0][1] = 0.0;   _RotateHorizion[0][2] = sin(_RimHorizonOffset);  _RotateHorizion[0][3] = 0.0;
-                _RotateHorizion[1][0] = 0.0;                        _RotateHorizion[1][1] = 1.0;   _RotateHorizion[1][2] = 0.0;                     _RotateHorizion[1][3] = 0.0;
-                _RotateHorizion[2][0] = -sin(_RimHorizonOffset);    _RotateHorizion[2][1] = 0.0;   _RotateHorizion[2][2] = cos(_RimHorizonOffset);  _RotateHorizion[2][3] = 0.0;
-                _RotateHorizion[3][0] = 0.0;                        _RotateHorizion[3][1] = 0.0;   _RotateHorizion[3][2] = 0.0;                     _RotateHorizion[3][3] = 1.0;
-
-                // Viewを垂直方向に回せるための行列
-                float4x4 _RotateVertical;
-                ZERO_INITIALIZE(float4x4, _RotateVertical);
-                _RotateVertical[0][0] = 1.0;    _RotateVertical[0][1] = 0.0;                        _RotateVertical[0][2] = 0.0;                        _RotateVertical[0][3] = 0.0;
-                _RotateVertical[1][0] = 0.0;    _RotateVertical[1][1] = cos(_RimVerticalOffset);    _RotateVertical[1][2] = sin(_RimVerticalOffset);    _RotateVertical[1][3] = 0.0;
-                _RotateVertical[2][0] = 0.0;    _RotateVertical[2][1] = -sin(_RimVerticalOffset);   _RotateVertical[2][2] = cos(_RimVerticalOffset);    _RotateVertical[2][3] = 0.0;
-                _RotateVertical[3][0] = 0.0;    _RotateVertical[3][1] = 0.0;                        _RotateVertical[3][2] = 0.0;                        _RotateVertical[3][3] = 1.0;
-                
-                // Viewベクトルをオフセットで作った行列で変換させる
-                _RimViewFix = mul(mul(_RotateHorizion, _RotateVertical), _RimViewFix);
+	            float3 _HorizonBias = float3(UNITY_MATRIX_V[0][0], UNITY_MATRIX_V[0][1], UNITY_MATRIX_V[0][2]);
+	            float3 _VerticalBias = float3(UNITY_MATRIX_V[1][0], UNITY_MATRIX_V[1][1], UNITY_MATRIX_V[1][2]);
+	            _RimViewFix = -_RimHorizonOffset  * _HorizonBias  + (1 - abs(_RimHorizonOffset))  * _RimViewFix;
+	            _RimViewFix = -_RimVerticalOffset * _VerticalBias + (1 - abs(_RimVerticalOffset)) * _RimViewFix;
                 
                 // Rim Colorを調整する。
                 _RimColor.rgb = lerp(_RimColor.rgb, _RimColor.rgb * _MainLightColor.rgb, _UseMainLightColorForRim);
                 
                 // （1.0 - NormalとViewを内積）で輪郭周りを抽出する
-                //float _RimDot = saturate(1.0 - dot(IN.normal, _RimView));
                 float _RimDot = saturate(1.0 - dot(IN.normal, _RimViewFix));
                 // Rim LightのPowerを調整する（マジックナンバーを使う）
                 _RimPower = pow(abs(_RimDot), exp2(lerp(3.0, 0.0, _RimPower)));
@@ -270,7 +250,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 _RimInsideMask = lerp(_RimInsideMask, 0.0, step(1.0, _RimThreshold));
 
                 // Rim LightがHalf-Lambertによってマスクされるように調整する（つまり陰が強くなるほどRim Lightが弱くなる）
-                const half3 _LightDirMaskOnForRim = _RimColor * saturate(_RimInsideMask - ((1.0 - _HalfLambert) + _SysLightDirMaskLevelForRim));
+                const half3 _LightDirMaskOnForRim = _RimColor.rgb * saturate(_RimInsideMask - ((1.0 - _HalfLambert) + _SysLightDirMaskLevelForRim));
                 
                 // 最終的なRim Lightを計算する
                 float3 _FinalRim = saturate((_RimMaskMap.g + _SysRimMaskLevel)) * _LightDirMaskOnForRim;
