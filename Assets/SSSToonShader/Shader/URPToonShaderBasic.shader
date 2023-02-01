@@ -2,23 +2,26 @@ Shader "SSSToonShader/URPToonShaderBasic"
 {
     Properties
     {
-        _BaseMap ("BaseMap", 2D) = "white" {}
-        _BaseColor ("BaseColor", Color) = (1,1,1,1)
+        [Header(Base)]
+        _BaseMap ("Base Map", 2D) = "white" {}
+        _BaseColor ("Base Color", Color) = (1,1,1,1)
+        [Space(10)]
+        _ShadowColor1 ("Shadow Color1", Color) = (1,1,1,1)
+        _ShadowColor2 ("Shadow Color2", Color) = (1,1,1,1)
+        _ShadowPower1 ("Shadow Power1", Range(0, 1.0)) = 0.5
+        _ShadowPower2 ("Shadow Power2", Range(0, 1.0)) = 0
         
-        _ShadowColor1 ("ShadowColor1", Color) = (1,1,1,1)
-        _ShadowColor2 ("ShadowColor2", Color) = (1,1,1,1)
-        _ShadowPower1 ("ShadowPower1", Range(0, 1.0)) = 0.5
-        _ShadowPower2 ("ShadowPower2", Range(0, 1.0)) = 0
+        [Space(10)][Header(Specular Light)]
+        [HDR] _SpecularColor ("Specular Color", Color) = (1,1,1,1)
+        _SpecularPower ("Specular Power", Range(0, 1.0)) = 0.5
         
-        [HDR] _SpecularColor ("SpecularColor", Color) = (1,1,1,1)
-        _SpecularPower ("SpecularPower", Range(0, 1.0)) = 0.5
+        [Space(10)][Header(Rim Light)]
+        _RimColor ("Rim Color", Color) = (1,1,1,1)
+        _RimPower ("Rim Power", Range(0, 1.0)) = 0.1
+        _RimThreshold ("Rim Threshold", Range(0.0001, 1)) = 0.0001
         
-        _RimColor ("RimColor", Color) = (1,1,1,1)
-        _RimPower ("RimPower", Range(0, 1.0)) = 0.1
-        _RimThreshold ("RimThreshold", Range(0.0001, 1)) = 0.0001
-        
-        _RimHorizonOffset ("RimHorizonOffset", Range(-1, 1)) = 0
-        _RimVerticalOffset ("RimVerticalOffset", Range(-1, 1)) = 0
+        _RimHorizonOffset ("Rim Horizon Offset", Range(-1, 1)) = 0
+        _RimVerticalOffset ("Rim Vertical Offset", Range(-1, 1)) = 0
     }
     SubShader
     {
@@ -84,8 +87,6 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half _SpecularPower;    
                 half _RimPower;
                 half _RimThreshold;
-                // half _Padding2; // 68Byte?
-                // half _Padding3; // 70Byte?
                 half _RimHorizonOffset;
                 half _RimVerticalOffset;
                 half _Padding4; // 72Byte?
