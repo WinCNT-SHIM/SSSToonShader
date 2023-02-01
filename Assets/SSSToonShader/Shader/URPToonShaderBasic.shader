@@ -117,8 +117,11 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // 正規化
                 IN.normal = normalize(IN.normal);
                 IN.viewDir = normalize(IN.viewDir);
+
+                // メインライト情報を取得
+                Light _MainLight = GetMainLight();
                 
-                half4 _FinalColor = { 0.5, 0.5, 0.5, 1.0 };
+                half4 _FinalColor = { 0.5, 0.5, 0.5, 1.0 }; // Grey
                 _FinalColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, IN.uv);
 
 /// Lighting
@@ -200,7 +203,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                     );
 
                 // 上で計算した閾値を使用し、Specular Colorを調整する(設定に応じてとMain Light Colorを混ぜる)
-                const float3 _HighColorOnly = lerp(_SpecularColor.rgb, _SpecularColor.rgb * _MainLightColor.rgb, _UseMainLightColorForSpec) * _HighColorMask;
+                const float3 _HighColorOnly = lerp(_SpecularColor.rgb, _SpecularColor.rgb * _MainLight.color.rgb, _UseMainLightColorForSpec) * _HighColorMask;
                 
                 // Base ColorにSpecularを足す
                 half3 _FinalHighColor =
@@ -237,7 +240,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
 	            _RimViewFix = -_RimVerticalOffset * _VerticalBias + (1 - abs(_RimVerticalOffset)) * _RimViewFix;
                 
                 // Rim Colorを調整する。
-                _RimColor.rgb = lerp(_RimColor.rgb, _RimColor.rgb * _MainLightColor.rgb, _UseMainLightColorForRim);
+                _RimColor.rgb = lerp(_RimColor.rgb, _RimColor.rgb * _MainLight.color.rgb, _UseMainLightColorForRim);
                 
                 // （1.0 - NormalとViewを内積）で輪郭周りを抽出する
                 float _RimDot = saturate(1.0 - dot(IN.normal, _RimViewFix));
