@@ -144,10 +144,11 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 const float _FinalShadowMask = saturate(
                     1.0
                     + (
-                        (lerp(
-                            _HalfLambert,
-                            _HalfLambert * saturate(_SysShadowsLevel),
-                            _SysShadowsLevel
+                        (
+                            lerp(
+                                _HalfLambert,
+                                _HalfLambert * saturate(_SysShadowsLevel),
+                                _SysShadowsLevel
                             )
                             - (_ShadowPower1 - _ToonFeatherBaseTo1st)
                         )
