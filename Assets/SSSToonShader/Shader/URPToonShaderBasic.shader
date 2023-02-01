@@ -235,8 +235,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 
                 // Rim Lightの角度を調整する
                 float3 _RimViewFix = IN.viewDir;
-	            float3 _HorizonBias = float3(UNITY_MATRIX_V[0][0], UNITY_MATRIX_V[0][1], UNITY_MATRIX_V[0][2]);
-	            float3 _VerticalBias = float3(UNITY_MATRIX_V[1][0], UNITY_MATRIX_V[1][1], UNITY_MATRIX_V[1][2]);
+	            float3 _HorizonBias = UNITY_MATRIX_V[0].xyz;
+	            float3 _VerticalBias = UNITY_MATRIX_V[1].xyz;
 	            _RimViewFix = -_RimHorizonOffset  * _HorizonBias  + (1 - abs(_RimHorizonOffset))  * _RimViewFix;
 	            _RimViewFix = -_RimVerticalOffset * _VerticalBias + (1 - abs(_RimVerticalOffset)) * _RimViewFix;
                 
