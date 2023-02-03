@@ -154,17 +154,15 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // 　　上と同じくHalf-LambertをX軸にするStep(Smoothstep)のような形を作り、それを閾値として1影と2影をLerpさせる
                 // ２．1影と2影の色が決まったら、Base Colorとそれを上で計算した閾値を利用してLerpさせる
                 // 要するに、Half-Lambertの値が1(光を多く受ける)に近いほど、逆に閾値は0に(近く)なり、
-                // Base Color => 1影 => 2影の色になる    
+                // Base Color => 1影 => 2影の色になる
+                const float _Shadow1And2Mask = saturate((_ShadowPower2 - _HalfLambert * _ShadowMap2nd.r) / _ToonFeather1stTo2nd);
+                
                 const half4 _FinalBaseColor = lerp(
                     _BaseColor,
                     lerp(
                         _ShadowColor1,
                         _ShadowColor2,
-                        saturate(
-                            1.0
-                            + ((_HalfLambert - (_ShadowPower2 -_ToonFeather1stTo2nd)) * ((1.0 - _ShadowMap2nd.rgb).r - 1.0))
-                            / _ToonFeather1stTo2nd
-                        )
+                        _Shadow1And2Mask
                     ),
                     _FinalShadowMask
                 );

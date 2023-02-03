@@ -60,7 +60,7 @@ Material:
     - _Set_FinalShadowMask: 0.51
     - _ShadowColor: 0
     - _ShadowPower1: 0.5
-    - _ShadowPower2: 0.368
+    - _ShadowPower2: 0.25
     - _ShadowPowerStep: 0.5
     - _SpecularPower: 0.248
     - _SrcFactor: 5
