@@ -142,17 +142,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 // Base Colorと1影の境界を作るための閾値を計算する
                 // ここでHalf-LambertをX軸にするStep(Smoothstep)のような形を作る
                 const float _FinalShadowMask = saturate(
-                    1.0
-                    + (
-                        (
-                            lerp(
-                                _HalfLambert,
-                                _HalfLambert * saturate(_SysShadowsLevel),
-                                _SysShadowsLevel
-                            )
-                            - (_ShadowPower1 - _ToonFeatherBaseTo1st)
-                        )
-                        * ((1.0 - _ShadowMap1st.rgb).r - 1.0)
+                    (
+                        _ShadowPower1
+                        - lerp(_HalfLambert, _HalfLambert * saturate(_SysShadowsLevel), _SysShadowsLevel) * _ShadowMap1st.r
                     )
                     / _ToonFeatherBaseTo1st
                 );

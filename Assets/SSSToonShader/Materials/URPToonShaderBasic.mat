@@ -65,6 +65,7 @@ Material:
     - _SpecularPower: 0.248
     - _SrcFactor: 5
     - _StepOffset: 0
+    - _ToonFeatherBaseTo1st: 0.053
     - _ToonFeather_BaseAnd1st: 0.028
     - _ZTest: 0
     - _ZWrite: 0
@@ -77,7 +78,7 @@ Material:
     - _BaseColor: {r: 1, g: 0, b: 0, a: 1}
     - _ExampleName: {r: 0, g: 0, b: 0, a: 0}
     - _RimColor: {r: 0, g: 1, b: 0, a: 1}
-    - _ShadowColor1: {r: 0.39215687, g: 0, b: 0, a: 1}
-    - _ShadowColor2: {r: 0.254717, g: 0, b: 0, a: 1}
+    - _ShadowColor1: {r: 0, g: 1, b: 0, a: 1}
+    - _ShadowColor2: {r: 0, g: 0, b: 1, a: 1}
     - _SpecularColor: {r: 0, g: 0, b: 1, a: 1}
   m_BuildTextureStacks: []
