@@ -127,9 +127,9 @@ Shader "Example/LightningTest"
             half4 frag(Varyings IN) : SV_Target
             {
                 float2 uv = IN.UV;    
-                uv = uv * 2. -1.;
+                uv = uv * 2.0 -1.0;
 
-                float2 p = IN.UV;
+                float2 p = IN.UV * 2.0 -1.0;
                 
                 float3 p3 = float3(p, _Time.y * 0.4);
 
@@ -140,7 +140,6 @@ Shader "Example/LightningTest"
                 float g = pow(y, 0.2);
                 
                 float3 col = float3(1.70, 1.48, 1.78);
-                //float3 col = float3(0.70, 0.48, 0.78);
                 col = col * -g + col;
 				col = col * col;
 				col = col * col;
