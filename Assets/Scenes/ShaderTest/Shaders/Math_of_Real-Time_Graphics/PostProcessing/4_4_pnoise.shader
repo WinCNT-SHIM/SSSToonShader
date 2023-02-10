@@ -303,6 +303,72 @@ Shader "Sample/Math_of_Real-Time_Graphics/4_4_pnoise"
                 f = f * f * f * (10.0 - 15.0 * f + 6.0 * f * f);
                 return 0.5 * lerp(lerp(v[0][0], v[0][1], f[0]), lerp(v[1][0], v[1][1], f[0]), f[1]) + 0.5;
             }
+
+#pragma region Perlin-Noise
+            float gtable2(float2 lattice, float2 p)
+            {
+                uint2 n = asuint(lattice);
+                uint ind = uhash22(n).x >> 29;
+                float u = 0.92387953 * (ind < 4u ? p.x : p.y);  //0.92387953 = cos(pi/8)
+                float v = 0.38268343 * (ind < 4u ? p.y : p.x);  //0.38268343 = sin(pi/8)
+                return ((ind & 1u) == 0u ? u : -u) + ((ind & 2u) == 0u? v : -v);
+            }
+            float pnoise21(float2 p)
+            {
+                float2 n = floor(p);
+                float2 f = frac(p);
+                float v[4];
+                for (int j = 0; j < 2; j ++){
+                    for (int i = 0; i < 2; i++){
+                        v[i+2*j] = gtable2(n + float2(i, j), f - float2(i, j));
+                    }
+                }
+                f = f * f * f * (10.0 - 15.0 * f + 6.0 * f * f);
+                return 0.5 * lerp(lerp(v[0], v[1], f[0]), lerp(v[2], v[3], f[0]), f[1]) + 0.5;
+            }
+            /// Perlinが提案した勾配(Gradient)の計算にランダムに対応させる関数
+            /// (1,1,0) (-1,1,0) (1,-1,0) (-1,-1,0)  dot  (x+y) (-x+y) (x-y) (-x-y)
+            /// (1,0,1) (-1,0,1) (1,0,-1) (-1,0,-1)  ==>  (x+z) (-x+z) (x-z) (-x-z)
+            /// (0,1,1) (0,-1,1) (0,1,-1) (0,-1,-1)       (y+z) (-y+z) (y-z) (-y-z)
+            /// 一般の勾配ノイズだと軸方向・対角線方向に近いとアーティファクトが生じうる
+            /// それで、Perlin-Noiseでは軸・対角線方向を除いた12方向の勾配をとり、
+            /// アーティファクトを生じさせず、コストを削減する
+            /// lattice: 格子点 
+            float gtable3(float3 lattice, float3 p)
+            {
+                /// 格子点の値をビットに変換
+                uint3 n = asuint(lattice);
+                /// 32bitから最初の4bitだけを取る
+                /// (Perlinが提案した勾配が12通りであるため)
+                uint ind = uhash33(n).x >> 28;
+                
+                float u = ind < 8u ? p.x : p.y;
+                float v = ind < 4u ? p.y : ind == 12u || ind == 14u ? p.x : p.z;
+                return ((ind & 1u) == 0u? u: -u) + ((ind & 2u) == 0u? v : -v);
+            }
+            /// Perlin勾配(Gradient)でノイズを計算する
+            /// 0.70710678は1/sqrt(2)
+            float pnoise31(float3 p)
+            {
+                float3 n = floor(p);
+                float3 f = frac(p);
+                float v[8];
+                for (int k = 0; k < 2; k++ ){
+                    for (int j = 0; j < 2; j++ ){
+                        for (int i = 0; i < 2; i++){
+                            v[i+2*j+4*k] = gtable3(n + float3(i, j, k), f - float3(i, j, k)) * 0.70710678;
+                        }
+                        
+                    }
+                }
+                f = f * f * f * (10.0 - 15.0 * f + 6.0 * f * f);
+                float w[2];
+                for (int i = 0; i < 2; i++){
+                    w[i] = lerp(lerp(v[4*i], v[4*i+1], f[0]), lerp(v[4*i+2], v[4*i+3], f[0]), f[1]);
+                }
+                return 0.5 * lerp(w[0], w[1], f[2]) + 0.5;
+            }
+#pragma endregion
             
 //////////////////////////////////////////////////
 /// Vertext & Fragment Shader
@@ -324,32 +390,19 @@ Shader "Sample/Math_of_Real-Time_Graphics/4_4_pnoise"
                 float time = _Time.y;
 
                 float2 pos;
-                pos.x = IN.UV.x * _ScreenParams.x / min(_ScreenParams.x, _ScreenParams.y);
-                pos.y = IN.UV.y * _ScreenParams.y / min(_ScreenParams.x, _ScreenParams.y);
-                //pos = IN.UV;
-                
-                int channel = int(IN.UV.x * 2.0);
-                
+                pos = IN.UV;
+                //pos.x = IN.UV.x * _ScreenParams.x / min(_ScreenParams.x, _ScreenParams.y);
+                //pos.y = IN.UV.y * _ScreenParams.y / min(_ScreenParams.x, _ScreenParams.y);
                 pos = 10.0 * pos + time;    // [0,10]区間にスケールして移動
-                
-                //fragColor.rgb = vnoise21(pos);
-                //fragColor.rgb = vnoise31(float3(pos, time));
-                //fragColor.rgb = vnoise33(float3(pos, time));
-                //fragColor.rgb = dot(float2(1.0, 1.0), grad(pos));
-                //fragColor.rgb = noised(float3(pos, time)).x;
-                //fragColor.rgb = gnoise21(pos);
-                //fragColor.rgb = vnoise21(pos);
 
-                if(channel < 1)//left
-                {
-                    //fragColor = gnoise21(pos);
-                    fragColor = gnoise31(float3(pos, time));
-                }
-                else
-                {
-                    //fragColor = gnoise31(float3(pos, time));
-                    fragColor = rotNoise21(pos, time);                    
-                }
+                uint2 channel = uint2(IN.UV * 2.0);
+                
+                float v = channel[0] == 0 ? 
+                    channel[1] == 0 ? gnoise21(pos) :
+                    gnoise31(float3(pos, time)) :
+                    channel[1] == 0 ? pnoise21(pos) : 
+                    pnoise31(float3(pos, time));
+                fragColor.rgb = v;
                 
                 fragColor.a = 1.0;
                 return fragColor;
