@@ -95,6 +95,6 @@ MonoBehaviour:
   m_Name: CustomPostProcessRenderFeature
   m_EditorClassIdentifier: 
   m_Active: 1
-  _shader: {fileID: 4800000, guid: 7a43e34d68cc99a4ea805e2082ba8e8c, type: 3}
+  _shader: {fileID: 4800000, guid: cb899fec709c6fa4090b2c31ccf00e88, type: 3}
   _timing: 0
   _applyToSceneView: 1

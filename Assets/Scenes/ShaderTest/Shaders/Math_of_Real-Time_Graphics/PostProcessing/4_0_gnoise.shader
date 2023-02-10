@@ -1,4 +1,4 @@
-Shader "Sample/Math_of_Real-Time_Graphics/3_0_vnoise"
+Shader "Sample/Math_of_Real-Time_Graphics/4_0_gnoise"
 {
     Properties
     {
@@ -220,6 +220,90 @@ Shader "Sample/Math_of_Real-Time_Graphics/3_0_vnoise"
                         k3 + k6*u.x + k5*u.y + k7*u.x*u.y )
                     );
             }
+
+            
+            /// 勾配ノイズ（Gradient-Noise）2 in, 1 out
+            float gnoise21(float2 p)
+            {
+                float2 n = floor(p);
+                float2 f = frac(p);
+                float v[2][2];
+
+                for(int j = 0; j < 2; j++)
+                    for(int i = 0; i < 2; i++)
+                    {
+                        float2 g = normalize(2.0 * hash22(n + float2(i,j)) - 1.0f);
+                        v[j][i] = dot(g, f - float2(i,j));
+                    }
+                //f = f * f * (3.f - 2.f * f); // エルミート補間
+                f = f * f * f * (10.0 - 15.0 * f + 6.0 * f * f); //quintic Hermite interpolation
+
+                return 0.5 * lerp(lerp(v[0][0], v[0][1], f[0]), lerp(v[1][0], v[1][1], f[0]), f[1]) + 0.5;
+            }
+            /// 勾配ノイズ（Gradient-Noise）3 in, 1 out
+            float gnoise31(float3 p)
+            {
+                float3 n = floor(p);
+                float3 f = frac(p);
+                float v[2][2][2];
+                
+                for (int k = 0; k < 2; k++ )
+                    for (int j = 0; j < 2; j++ )
+                        for (int i = 0; i < 2; i++)
+                        {
+                            float3 g = normalize(2.0 * hash33(n + float3(i,j,k)) - 1.0f);
+                            v[k][j][i] = dot(g, f - float3(i,j,k));
+                        }
+
+                //f = f * f * (3.0 - 2.0 * f); // Hermite interpolation
+                f = f * f * f * (10.0 - 15.0 * f + 6.0 * f * f); //quintic Hermite interpolation
+                
+                float w[2];
+                // 底面と上面での補間
+                for (int i = 0; i < 2; i++)
+                    w[i] = lerp(lerp(v[i][0][0], v[i][0][1], f[0]), lerp(v[i][1][0], v[i][1][1], f[0]), f[1]);
+
+                // 底面と上面を高さで補間
+                return 0.5 * lerp(w[0], w[1], f[2]) + 0.5;
+            }
+
+            //begin rot
+            float2 rot2(float2 p, float t)
+            {
+                t *= PI;
+                return float2(cos(t) * p.x -sin(t) * p.y, sin(t) * p.x + cos(t) * p.y);
+            }
+            float3 rotX(float3 p, float t)
+            {
+                return float3(p.x, rot2(p.yz, t));
+            }
+            float3 rotY(float3 p, float t)
+            {
+                return float3(p.y, rot2(p.zx, t)).zxy;
+            }
+            float3 rotZ(float3 p, float t)
+            {
+                return float3(rot2(p.xy, t), p.z);
+            }
+            //end rot
+
+            // 
+            float rotNoise21(float2 p, float ang){
+                float2 n = floor(p);
+                float2 f = frac(p);
+                float v[2][2];
+
+                for(int j = 0; j < 2; j++)
+                    for(int i = 0; i < 2; i++)
+                    {
+                        float2 g = normalize(2.0 * hash22(n + float2(i,j)) - 1.0f);
+                        g = rot2(g, ang);
+                        v[j][i] = dot(g, f - float2(i,j));
+                    }
+                
+                f = f * f * f * (10.0 - 15.0 * f + 6.0 * f * f);
+                return 0.5 * lerp(lerp(v[0][0], v[0][1], f[0]), lerp(v[1][0], v[1][1], f[0]), f[1]) + 0.5;
+            }
 //////////////////////////////////////////////////
 /// Vertext & Fragment Shader
 //////////////////////////////////////////////////
@@ -238,14 +322,34 @@ Shader "Sample/Math_of_Real-Time_Graphics/3_0_vnoise"
                 half4 fragColor = half4(0, 0, 0, 1);
 
                 float time = _Time.y;
-                float2 pos = IN.UV;
+
+                float2 pos;
+                pos.x = IN.UV.x * _ScreenParams.x / min(_ScreenParams.x, _ScreenParams.y);
+                pos.y = IN.UV.y * _ScreenParams.y / min(_ScreenParams.x, _ScreenParams.y);
+                //pos = IN.UV;
+                
+                int channel = int(IN.UV.x * 2.0);
+                
                 pos = 10.0 * pos + time;    // [0,10]区間にスケールして移動
                 
                 //fragColor.rgb = vnoise21(pos);
                 //fragColor.rgb = vnoise31(float3(pos, time));
                 //fragColor.rgb = vnoise33(float3(pos, time));
                 //fragColor.rgb = dot(float2(1.0, 1.0), grad(pos));
-                fragColor.rgb = noised(float3(pos, time)).x;
+                //fragColor.rgb = noised(float3(pos, time)).x;
+                //fragColor.rgb = gnoise21(pos);
+                //fragColor.rgb = vnoise21(pos);
+
+                if(channel < 1)//left
+                {
+                    //fragColor = gnoise21(pos);
+                    fragColor = gnoise31(float3(pos, time));
+                }
+                else
+                {
+                    //fragColor = gnoise31(float3(pos, time));
+                    fragColor = rotNoise21(pos, time);                    
+                }
                 
                 fragColor.a = 1.0;
                 return fragColor;
