@@ -49,7 +49,12 @@ Shader "DebugShader/VertexColor"
 
             half4 frag(Varyings IN) : SV_Target
             {
-                half4 finalColor = half4(IN.vertexColor);
+                half4 finalColor = 0.0;
+                finalColor = half4(IN.vertexColor);
+
+                //float len = length(IN.vertexColor.rgb);
+                //finalColor.rgb = len;
+                
                 finalColor.a = 1.0f;
                 return finalColor;
             }
