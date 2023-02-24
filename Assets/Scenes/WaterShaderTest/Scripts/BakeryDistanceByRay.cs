@@ -139,11 +139,9 @@ public class BakeryDistanceByRay : MonoBehaviour
     /// <returns>距離を格納した頂点カラー</returns>
     private Color[] ComputeDistanceToOthers(ref Vector3[] vertices)
     {
-        float[] tmpDistance = new float[vertices.Length];
+        Vector3[] tmpDistance = new Vector3[vertices.Length];
         for (int i = 0; i < tmpDistance.Length; i++)
-            tmpDistance[i] = 0.0f;
-
-        //Physics.queriesHitBackfaces = true;  // Physics: Fixed some of the Physics.Raycast overloads ignoring the Physics.queriesHitBackfaces setting. (UUM-9353) First seen in 2023.1.0a4.
+            tmpDistance[i] = new Vector3(0.0f, 0.0f, 0.0f);
         
         for (int i = 0; i < vertices.Length; i++)
         {
@@ -162,8 +160,8 @@ public class BakeryDistanceByRay : MonoBehaviour
                 {
                     // 頂点とその他オブジェクトが近いほど、値を１にする
                     float adjustDistanceValue = 1.0f - raycastHit.distance;
-                    if (tmpDistance[i] < adjustDistanceValue)
-                        tmpDistance[i] = adjustDistanceValue;
+                    if (tmpDistance[i].magnitude < adjustDistanceValue)
+                        tmpDistance[i] = forward * adjustDistanceValue;
                 }
                 
                 // Colliderの裏側も検知するため、Rayを逆方向にしてもう１度距離を測る
@@ -172,18 +170,17 @@ public class BakeryDistanceByRay : MonoBehaviour
                 {
                     // Rayを逆方向にしたため、そのままの距離を格納する（逆方向なので、調整しなくとも近いほど１となる）
                     float adjustDistanceValue = raycastHit.distance;
-                    if (tmpDistance[i] < adjustDistanceValue)
-                        tmpDistance[i] = adjustDistanceValue;
+                    if (tmpDistance[i].magnitude < adjustDistanceValue)
+                        tmpDistance[i] = -forward * adjustDistanceValue;
                 }
             }
         }
-        //hysics.queriesHitBackfaces = false;
 
         // Vertex Color
         Color[] vertexColor = new Color[vertices.Length];
         // Vertex Colorに距離を格納する
         for (int i = 0; i < vertexColor.Length; i++)
-            vertexColor[i] = new Color(tmpDistance[i], 0.0f, 1.0f);
+            vertexColor[i] = new Color(tmpDistance[i].x, tmpDistance[i].y, tmpDistance[i].z);
 
         return vertexColor;
     }

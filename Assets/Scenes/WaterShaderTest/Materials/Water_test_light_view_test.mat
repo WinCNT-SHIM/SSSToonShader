@@ -21,14 +21,14 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Water_test_light_view_test
-  m_Shader: {fileID: -6465566751694194690, guid: 778fb4120eab8a64f946d74ec41ab449,
+  m_Shader: {fileID: -6465566751694194690, guid: 2fae8de277839044ca6af96a5cfed177,
     type: 3}
   m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
+  m_CustomRenderQueue: -1
   stringTagMap:
     RenderType: Opaque
   disabledShaderPasses:
@@ -90,8 +90,10 @@ Material:
     - _FoamAnimAmount: 1
     - _FoamAnimation: 0
     - _FoamCutoff: 0.87
+    - _FoamDistanceCutoff: 1
     - _FoamNoise: -4.65
     - _FoamVelocity: 0.1
+    - _FoamViewCutoff: 1.14
     - _FresnelAmount: 0.14
     - _Fresnel_on: 0
     - _NormalFresnel: 1
@@ -102,12 +104,13 @@ Material:
     - _RefractionVelocity: 0.02
     - _SrcBlend: 1
     - _Surface: 0
+    - _TestDivide: 1.35
     - _WaterDepth: 0.39
     - _WaveScale: 100
     - _WaveShadow: 0.94
     - _WaveShadowScale: 54.4
     - _WaveVelocity: 0.15
-    - _WaveVertex: 0.0025
+    - _WaveVertex: 0.01
     - _ZTest: 4
     - _ZWrite: 1
     - _ZWriteControl: 0
