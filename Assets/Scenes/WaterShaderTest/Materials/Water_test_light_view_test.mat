@@ -1,0 +1,141 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6447594986677914018
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 5
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Water_test_light_view_test
+  m_Shader: {fileID: -6465566751694194690, guid: 778fb4120eab8a64f946d74ec41ab449,
+    type: 3}
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: 2000
+  stringTagMap:
+    RenderType: Opaque
+  disabledShaderPasses:
+  - SHADOWCASTER
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _DIST:
+        m_Texture: {fileID: 2800000, guid: 81ad25455c07a74418d3e8d2fd67f565, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _FoamTexture:
+        m_Texture: {fileID: 2800000, guid: 39b03da18a850f546a39c6b087d4caf0, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainNormal:
+        m_Texture: {fileID: 2800000, guid: 251226a4c5ab2de49a98ea8653556273, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SubNormal:
+        m_Texture: {fileID: 2800000, guid: 7324c054732566643b86ecaf63f0ee62, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Texture2D:
+        m_Texture: {fileID: 2800000, guid: 4d11d0f3703acca439f28f0dcea2ab87, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Texture2D_1:
+        m_Texture: {fileID: 2800000, guid: 4d11d0f3703acca439f28f0dcea2ab87, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_Lightmaps:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_LightmapsInd:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_ShadowMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - Vector1_41724C05: 0.367
+    - _AlphaClip: 0
+    - _Blend: 0
+    - _BottomHeight: 0.24
+    - _CastShadows: 0
+    - _Cull: 2
+    - _DIST_POW: 0.15
+    - _DstBlend: 0
+    - _FOAMAREA: 0.15
+    - _Float: 0.27
+    - _Float_1: 0.31
+    - _Float_2: 0.01
+    - _FoamAmount: 0.82
+    - _FoamAnimAmount: 1
+    - _FoamAnimation: 0
+    - _FoamCutoff: 0.87
+    - _FoamNoise: -4.65
+    - _FoamVelocity: 0.1
+    - _FresnelAmount: 0.14
+    - _Fresnel_on: 0
+    - _NormalFresnel: 1
+    - _NormalStrength: 0.84
+    - _QueueControl: 0
+    - _QueueOffset: 0
+    - _RefractionStrength: 0.124
+    - _RefractionVelocity: 0.02
+    - _SrcBlend: 1
+    - _Surface: 0
+    - _WaterDepth: 0.39
+    - _WaveScale: 100
+    - _WaveShadow: 0.94
+    - _WaveShadowScale: 54.4
+    - _WaveVelocity: 0.15
+    - _WaveVertex: 0.0025
+    - _ZTest: 4
+    - _ZWrite: 1
+    - _ZWriteControl: 0
+    - _noise_dist_pow: 0.034
+    - _voronoi_size: 2.74
+    - _water_Edge: 0.61
+    m_Colors:
+    - _Color: {r: 0, g: 0.8039217, b: 1, a: 0}
+    - _Color_1: {r: 0.56007475, g: 0.57616013, b: 0.5849056, a: 0}
+    - _Color_2: {r: 0.24554999, g: 0.4522484, b: 0.5849056, a: 0}
+    - _Color_3: {r: 0, g: 0.22351229, b: 0.26415092, a: 0}
+    - _FoamColor: {r: 1, g: 1, b: 1, a: 0.5019608}
+    - _FoamScaleA: {r: 40, g: 40, b: 0, a: 0}
+    - _FoamScaleB: {r: 40, g: 40, b: 0, a: 0}
+    - _FresnelColor: {r: 0.063456744, g: 0.41485587, b: 0.4339623, a: 1}
+    - _HighLightColor: {r: 0.52910286, g: 0.7735849, b: 0.747087, a: 1}
+    - _RefractionScale: {r: 15, g: 20, b: 0, a: 0}
+    - _Vector2: {r: 10, g: 22, b: 0, a: 0}
+    - _Vector2_1: {r: 11.71, g: 15.72, b: 0, a: 0}
+    - _Vector2_2: {r: 2, g: 2, b: 0, a: 0}
+    - _WaterBottom: {r: 1, g: 1, b: 1, a: 1}
+    - _WaterMain: {r: 0.19108221, g: 0.23601675, b: 0.35849056, a: 1}
+    - _WaterSub: {r: 0, g: 0.6627451, b: 1, a: 1}
+    - _WaveColor: {r: 0, g: 0.3566037, b: 0.5943396, a: 1}
+    - _dist_scrol_velo: {r: 0.025, g: 0.02, b: 0, a: 0}
+    - _lerpB: {r: 0, g: 0.10881708, b: 0.46226418, a: 1}
+    - _tex1_velo: {r: 0.02, g: 0, b: 0, a: 0}
+    - _tex2_velo: {r: -0.02, g: 0, b: 0, a: 0}
+    - _voronoi_color: {r: 0, g: 0.7257624, b: 0.8679245, a: 0}
+    - _water_surface_edge_color: {r: 0, g: 0.13116543, b: 0.1981132, a: 0}
+  m_BuildTextureStacks: []
