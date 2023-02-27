@@ -16,6 +16,8 @@ public class BakeryDistanceByRay : MonoBehaviour
 #region Variables
     // 距離を取る方向を格納する変数
     private List<Vector3> _offsetVector = new List<Vector3>();
+    // デプスの距離を取る方向を格納する変数
+    private List<Vector3> _offsetVectorDepthDist = new List<Vector3>();
     // GameObjectに付いているCollider(一応ない想定)
     private Collider _attachedCollider;
     // 距離を測るために一時手kにつけたColliderのリスト
@@ -86,7 +88,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         _offsetVector.Add(new Vector3(+0.5f, 0.0f, -1.0f).normalized);
         _offsetVector.Add(new Vector3(-0.5f, 0.0f, -1.0f).normalized);
         _offsetVector.Add(new Vector3(-1.0f, 0.0f, -0.5f).normalized);
-        
+
         // 距離を測るために一時手kにつけたColliderのリスト
         _temporaryColliderList = new List<Collider>();
     }
@@ -139,15 +141,15 @@ public class BakeryDistanceByRay : MonoBehaviour
     /// <returns>距離を格納した頂点カラー</returns>
     private Color[] ComputeDistanceToOthers(ref Vector3[] vertices)
     {
-        Vector3[] tmpDistance = new Vector3[vertices.Length];
+        Vector4[] tmpDistance = new Vector4[vertices.Length];
         for (int i = 0; i < tmpDistance.Length; i++)
-            tmpDistance[i] = new Vector3(0.0f, 0.0f, 0.0f);
+            tmpDistance[i] = new Vector4(0.0f, 0.0f, 0.0f, 0.0f);
         
         for (int i = 0; i < vertices.Length; i++)
         {
+            // x, y, zには衝突した表面の法線を足して最後に正規化する。wは衝突時の距離（近いほど、値を１にする）を格納する。
             Vector3 targetVertex = vertices[i];
-            
-            
+
             foreach (var forward in _offsetVector)
             {
                 // デバッグ用のRayを描画する
@@ -158,29 +160,46 @@ public class BakeryDistanceByRay : MonoBehaviour
                 bool isCollision = Physics.Raycast(targetVertex, forward, out RaycastHit raycastHit, maxDistance);
                 if (isCollision)
                 {
+                    // 衝突した表面の法線を足す
+                    tmpDistance[i].x += forward.x;
+                    tmpDistance[i].y += forward.y;
+                    tmpDistance[i].z += forward.z;
+                    
                     // 頂点とその他オブジェクトが近いほど、値を１にする
                     float adjustDistanceValue = 1.0f - raycastHit.distance;
-                    if (tmpDistance[i].magnitude < adjustDistanceValue)
-                        tmpDistance[i] = forward * adjustDistanceValue;
+                    if (tmpDistance[i].w < adjustDistanceValue)
+                        tmpDistance[i].w = adjustDistanceValue;
                 }
                 
                 // Colliderの裏側も検知するため、Rayを逆方向にしてもう１度距離を測る
-                isCollision = Physics.Raycast(targetVertex + forward * maxDistance, -forward, out raycastHit, maxDistance);
+                isCollision = Physics.Raycast((Vector3)targetVertex + forward * maxDistance, -forward, out raycastHit, maxDistance);
                 if (isCollision)
                 {
+                    // 衝突した表面の法線を足す
+                    tmpDistance[i].x += -forward.x;
+                    tmpDistance[i].y += -forward.y;
+                    tmpDistance[i].z += -forward.z;
+                    
                     // Rayを逆方向にしたため、そのままの距離を格納する（逆方向なので、調整しなくとも近いほど１となる）
                     float adjustDistanceValue = raycastHit.distance;
-                    if (tmpDistance[i].magnitude < adjustDistanceValue)
-                        tmpDistance[i] = -forward * adjustDistanceValue;
+                    if (tmpDistance[i].w < adjustDistanceValue)
+                        tmpDistance[i].w = adjustDistanceValue;
                 }
             }
+
+            // x, y, zを正規化し、距離をかけて格納する
+            Vector3 tmpVector3 = new Vector3(tmpDistance[i].x, tmpDistance[i].y, tmpDistance[i].z);
+            tmpVector3 = tmpVector3.normalized;
+            tmpDistance[i].x = tmpVector3.x;
+            tmpDistance[i].y = tmpVector3.y;
+            tmpDistance[i].z = tmpVector3.z;
         }
 
         // Vertex Color
         Color[] vertexColor = new Color[vertices.Length];
         // Vertex Colorに距離を格納する
         for (int i = 0; i < vertexColor.Length; i++)
-            vertexColor[i] = new Color(tmpDistance[i].x, tmpDistance[i].y, tmpDistance[i].z);
+            vertexColor[i] = new Color(tmpDistance[i].x, tmpDistance[i].y, tmpDistance[i].z, tmpDistance[i].w);
 
         return vertexColor;
     }
