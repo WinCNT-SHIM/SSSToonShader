@@ -1,16 +1,29 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.Windows;
 
 public class BakeryDistanceByRay : MonoBehaviour
 {
 #region Properties
-    [SerializeField] [Range(0.001f, 1.0f)] [Tooltip("各頂点から、ここで設定した距離以内にある兄弟のGameObjectについて探索します。")]
+    [SerializeField] [Range(0.001f, 1.0f)] [Tooltip("ここで設定した長さのRayを各頂点から飛ばします。")]
     private float maxDistance = 1.0f;
-    
-    [SerializeField] [Tooltip("各頂点から飛ばすRayをDebug用として描画する。")]
+    [SerializeField] [Tooltip("各頂点から飛ばすRayをDebug用として描画します。")]
     private bool drawDebugRay = false;
+    
+    [SerializeField] [Tooltip("Bakeした結果を保存するテクスチャのサイズを設定します（横縦比１：１）")]
+    private int textureSize = 2048;
+    [SerializeField] [Tooltip("テクスチャの保存先を設定します。")]
+    private string directoryPath = "";
+    [SerializeField] [Tooltip("保存するテクスチャのファイル名を設定します。")]
+    private string fileName = "BakeResult";
+    
+    [SerializeField]
+    private Texture texture;
+    [SerializeField]
+    private Material bakeMaterial;
 #endregion
 
 #region Variables
@@ -26,7 +39,7 @@ public class BakeryDistanceByRay : MonoBehaviour
 
     public void Bake()
     {
-        Debug.Log("処理開始！");
+        Debug.Log("Bake処理開始！");
         // 処理時間測定
         System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
         watch.Start();
@@ -57,11 +70,18 @@ public class BakeryDistanceByRay : MonoBehaviour
         Finish();
         
         // 処理時間測定
+        Debug.Log("Bake処理終了！全体の処理時間：" + watch.ElapsedMilliseconds + " ms");
+        
+        
+        // Texture保存
+        Debug.Log("Texture保存処理開始！");
+        SaveBakeResultToTexture();
         watch.Stop();
-        Debug.Log("処理終了！処理時間：" + watch.ElapsedMilliseconds + " ms");
+        Debug.Log("Texture保存処理終了！全体の処理時間：" + watch.ElapsedMilliseconds + " ms");
     }
 
-    /// <summary>
+#region Rayを飛ばして距離を測り、頂点カラーに格納する処理に関連するメソッド
+/// <summary>
     /// 処理の初期化
     /// </summary>
     private void Initialize()
@@ -208,6 +228,52 @@ public class BakeryDistanceByRay : MonoBehaviour
     {
         foreach (var tempCollider in _temporaryColliderList)
             Destroy(tempCollider);
+    }
+#endregion
+
+#region Bakeした結果をテクスチャとして保存する処理に関連するメソッド
+    private void SaveBakeResultToTexture()
+    {
+        if (String.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+        {
+            Debug.Log("正しい保存先を指定してください。");
+            return;
+        }
+        
+        
+        RenderTexture buffer = new RenderTexture(
+            textureSize, 
+            textureSize, 
+            0,                         // No depth/stencil buffer
+            RenderTextureFormat.ARGB32,     // Standard colour format
+            RenderTextureReadWrite.Linear   // No sRGB conversions
+        );
+        Graphics.Blit(texture, buffer, bakeMaterial);
+
+        Texture2D outputTex = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
+
+        RenderTexture.active = buffer;
+        
+        outputTex.ReadPixels(
+            new Rect(0, 0, textureSize, textureSize),   // Capture the whole texture
+            0, 0,                                                 // Write starting at the top-left texel
+            false                                           // No mipmaps
+        );
+
+        var pngByte = outputTex.EncodeToPNG();
+
+        string filePath = directoryPath + "/" + fileName + ".png";
+        
+        File.WriteAllBytes(filePath, pngByte);
+        
+        // 変数の片づけ
+        RenderTexture.active = null;
+        DestroyImmediate(outputTex);    // Destroyはゲーム中しか動作しないので、代わりにDestroyImmediateを使う
+    }
+#endregion
+
+    private void Update()
+    {
     }
 }
 
