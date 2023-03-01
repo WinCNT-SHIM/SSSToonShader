@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.SceneManagement;
 using UnityEngine.Windows;
 
 public class BakeryDistanceByRay : MonoBehaviour
@@ -24,6 +25,8 @@ public class BakeryDistanceByRay : MonoBehaviour
     private Texture texture;
     [SerializeField]
     private Material bakeMaterial;
+    [SerializeField]
+    private RenderTexture currentRenderTexture;
 #endregion
 
 #region Variables
@@ -35,6 +38,8 @@ public class BakeryDistanceByRay : MonoBehaviour
     private Collider _attachedCollider;
     // 距離を測るために一時手kにつけたColliderのリスト
     private List<Collider> _temporaryColliderList;
+    // GameObjectのMeshの情報
+    private Mesh mesh;
 #endregion
 
     public void Bake()
@@ -48,7 +53,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         Initialize();
         
         // GameObjectのMeshの情報を取得する
-        Mesh mesh = GetComponent<MeshFilter>().sharedMesh;
+        mesh = GetComponent<MeshFilter>().sharedMesh;
         if (mesh == null)
             return;
         
@@ -240,7 +245,14 @@ public class BakeryDistanceByRay : MonoBehaviour
             return;
         }
         
+        // 現在の
+        //var currentRenderTexture = RenderTexture.active;
+        //var currentRenderTexture = Camera.main.targetTexture;
         
+        //RenderTexture renderTexture = RenderTexture.GetTemporary(textureSize, textureSize);
+        //Camera.main.targetTexture = renderTexture;
+        //var currentRenderTexture = Camera.main.targetTexture;
+
         RenderTexture buffer = new RenderTexture(
             textureSize, 
             textureSize, 
@@ -248,12 +260,14 @@ public class BakeryDistanceByRay : MonoBehaviour
             RenderTextureFormat.ARGB32,     // Standard colour format
             RenderTextureReadWrite.Linear   // No sRGB conversions
         );
-        Graphics.Blit(texture, buffer, bakeMaterial);
-
-        Texture2D outputTex = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
-
+        // シェーダーを使ってSourceをDestにコピーする
+        Graphics.Blit(currentRenderTexture, buffer, bakeMaterial);
+        
+        // 現在のRenderTargetにRenderTextureを設定する（Graphics.SetRenderTargetと同様）
         RenderTexture.active = buffer;
         
+        Texture2D outputTex = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
+        // 現在のRenderTarget(Screen、またはRenderTexture)からPixelを読み取り、Texture2Dに書き込む
         outputTex.ReadPixels(
             new Rect(0, 0, textureSize, textureSize),   // Capture the whole texture
             0, 0,                                                 // Write starting at the top-left texel
@@ -265,15 +279,39 @@ public class BakeryDistanceByRay : MonoBehaviour
         string filePath = directoryPath + "/" + fileName + ".png";
         
         File.WriteAllBytes(filePath, pngByte);
+        // 新しく作成したファイルを直ちに表示させる
+        AssetDatabase.Refresh();    
         
         // 変数の片づけ
+        Camera.main.targetTexture = null;
         RenderTexture.active = null;
         DestroyImmediate(outputTex);    // Destroyはゲーム中しか動作しないので、代わりにDestroyImmediateを使う
     }
 #endregion
 
-    private void Update()
+    void Start()
     {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if (mesh == null) return;
+
+        //var angles = new Vector3((float)Math.PI / 2.0f, 0.0f, 0.0f);
+        var angles = new Vector3(-90.0f, 0.0f, 0.0f);
+        var quat = Quaternion.Euler(angles);
+        
+        RenderParams rp = new RenderParams(bakeMaterial);
+        Graphics.RenderMesh(
+            rp
+            , mesh
+            , 0
+            //, Matrix4x4.identity
+            , Matrix4x4.Rotate(quat)
+            //, Matrix4x4.Translate(new Vector3(-4.5f, 5.0f, 5.0f))
+        );
     }
 }
 
