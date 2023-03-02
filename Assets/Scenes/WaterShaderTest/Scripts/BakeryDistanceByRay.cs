@@ -1,10 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEditor;
-using UnityEngine.SceneManagement;
 using UnityEngine.Windows;
+using UnityEngine.Rendering;
 
 public class BakeryDistanceByRay : MonoBehaviour
 {
@@ -40,10 +41,16 @@ public class BakeryDistanceByRay : MonoBehaviour
     private List<Collider> _temporaryColliderList;
     // GameObjectのMeshの情報
     private Mesh mesh;
+    // Texture作成用カメラ
+    private Camera cameraForBake;
+    // Bakeボタンのフラグ用変数
+    private bool isClickedBakeButton;
 #endregion
 
     public void Bake()
     {
+        isClickedBakeButton = true;
+        
         Debug.Log("Bake処理開始！");
         // 処理時間測定
         System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
@@ -78,9 +85,41 @@ public class BakeryDistanceByRay : MonoBehaviour
         Debug.Log("Bake処理終了！全体の処理時間：" + watch.ElapsedMilliseconds + " ms");
         
         
+        //////////////////////////////////////////////////
         // Texture保存
+        //////////////////////////////////////////////////
         Debug.Log("Texture保存処理開始！");
-        SaveBakeResultToTexture();
+        
+        
+        // すでにTexture作成用カメラが存在する場合は、一度削除して新しく作成する
+        if (!cameraForBake.IsUnityNull())
+        {
+            DestroyImmediate(cameraForBake.gameObject);
+        }
+        
+        // Texture作成用カメラを作成する
+        var goCameraForBake = new GameObject();
+        goCameraForBake.name = "CameraForBake";
+        cameraForBake = goCameraForBake.AddComponent<Camera>();
+        
+        // Texture作成用カメラの設定を調整する
+        cameraForBake.backgroundColor = Color.cyan;            // Debug用背景色
+        //cameraForBake.backgroundColor = Color.black;            // 背景色を黒にする
+        cameraForBake.clearFlags = CameraClearFlags.SolidColor;   // 背景色でクリアする
+        
+
+        var preTargetTexture = cameraForBake.targetTexture;
+        cameraForBake.targetTexture = currentRenderTexture;
+        //goCameraForBake.transform.position.Set(0.0f, 0.0f, -10.0f);
+        goCameraForBake.transform.position += new Vector3(0.0f, 0.0f, -2.0f);
+
+        // Bakeした結果をpngファイルに変換して保存する
+        //SaveBakeResultToTexture();
+        
+        
+        // // Texture作成用カメラを削除
+        // DestroyImmediate(goCameraForBake);
+        
         watch.Stop();
         Debug.Log("Texture保存処理終了！全体の処理時間：" + watch.ElapsedMilliseconds + " ms");
     }
@@ -245,23 +284,30 @@ public class BakeryDistanceByRay : MonoBehaviour
             return;
         }
         
-        // 現在の
         //var currentRenderTexture = RenderTexture.active;
         //var currentRenderTexture = Camera.main.targetTexture;
         
         //RenderTexture renderTexture = RenderTexture.GetTemporary(textureSize, textureSize);
         //Camera.main.targetTexture = renderTexture;
         //var currentRenderTexture = Camera.main.targetTexture;
+        //var preTargetTexture = Camera.main.targetTexture; 
+        //Camera.main.targetTexture = currentRenderTexture;
+        //RenderTexture.active = currentRenderTexture;
 
+        //Graphics.Blit(null, currentRenderTexture);
+        
         RenderTexture buffer = new RenderTexture(
             textureSize, 
             textureSize, 
             0,                         // No depth/stencil buffer
             RenderTextureFormat.ARGB32,     // Standard colour format
-            RenderTextureReadWrite.Linear   // No sRGB conversions
+            //RenderTextureReadWrite.Linear   // No sRGB conversions
+            RenderTextureReadWrite.sRGB     // No sRGB conversions
         );
         // シェーダーを使ってSourceをDestにコピーする
-        Graphics.Blit(currentRenderTexture, buffer, bakeMaterial);
+        //Graphics.Blit(currentRenderTexture, buffer, bakeMaterial);
+        //Graphics.Blit(currentRenderTexture, buffer);
+        Graphics.Blit(currentRenderTexture, buffer);
         
         // 現在のRenderTargetにRenderTextureを設定する（Graphics.SetRenderTargetと同様）
         RenderTexture.active = buffer;
@@ -283,7 +329,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         AssetDatabase.Refresh();    
         
         // 変数の片づけ
-        Camera.main.targetTexture = null;
+        //Camera.main.targetTexture = preTargetTexture;
         RenderTexture.active = null;
         DestroyImmediate(outputTex);    // Destroyはゲーム中しか動作しないので、代わりにDestroyImmediateを使う
     }
@@ -291,27 +337,50 @@ public class BakeryDistanceByRay : MonoBehaviour
 
     void Start()
     {
-        
+        RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (mesh == null) return;
-
-        //var angles = new Vector3((float)Math.PI / 2.0f, 0.0f, 0.0f);
-        var angles = new Vector3(-90.0f, 0.0f, 0.0f);
-        var quat = Quaternion.Euler(angles);
         
-        RenderParams rp = new RenderParams(bakeMaterial);
-        Graphics.RenderMesh(
-            rp
-            , mesh
-            , 0
-            //, Matrix4x4.identity
-            , Matrix4x4.Rotate(quat)
-            //, Matrix4x4.Translate(new Vector3(-4.5f, 5.0f, 5.0f))
-        );
+    }
+    
+    void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        if (!isClickedBakeButton)
+        {
+            return;
+        }
+        else if (cameraForBake.Equals(camera))
+        {
+            
+            SaveBakeResultToTexture();
+            isClickedBakeButton = false;
+        }
+    }
+    
+    void OnRenderObject()
+    {
+        if ((cameraForBake == null) || (cameraForBake.cullingMask & (1 << gameObject.layer)) == 0)
+        {
+            return;
+        }
+        if (mesh != null)
+        {
+            bakeMaterial.SetPass(0);
+            //Graphics.DrawMeshNow(mesh, Vector3.zero, Quaternion.identity);
+            Graphics.DrawMeshNow(
+                mesh,
+                Vector3.zero,
+                Quaternion.Euler(new Vector3(-90.0f, 0.0f, 0.0f))
+            );
+        }
+    }
+    
+    void OnDestroy()
+    {
+        RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
     }
 }
 
