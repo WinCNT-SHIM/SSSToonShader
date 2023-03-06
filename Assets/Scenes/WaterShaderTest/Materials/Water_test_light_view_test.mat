@@ -94,7 +94,7 @@ Material:
     - _FoamDistanceCutoff: 1
     - _FoamNoise: -4.65
     - _FoamVelocity: 0.1
-    - _FoamViewCutoff: 0.27
+    - _FoamViewCutoff: 0
     - _FresnelAmount: 0.14
     - _Fresnel_on: 0
     - _NormalFresnel: 1

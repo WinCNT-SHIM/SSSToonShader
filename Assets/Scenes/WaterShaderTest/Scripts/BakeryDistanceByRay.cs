@@ -21,9 +21,8 @@ public class BakeryDistanceByRay : MonoBehaviour
     private string directoryPath = "";
     [SerializeField] [Tooltip("保存するテクスチャのファイル名を設定します。")]
     private string fileName = "BakeResult";
-    
-    [SerializeField]
-    private Material bakeMaterial;
+    [SerializeField] [Tooltip("Bakeテクスチャ作成時に使うShaderを設定します。")]
+    private Shader bakeShader;
 #endregion
 
 #region Variables
@@ -45,7 +44,7 @@ public class BakeryDistanceByRay : MonoBehaviour
     private bool isClickedBakeButton;
     // Mesh(のGameObject)に設定されたLayer（処理中一時的に変更し戻すための変数）
     private int preMeshLayer;
-    // 
+    // Mesh(のGameObject)に設定されたMaterial（処理中一時的に変更し戻すための変数）
     private Material preMaterial;
     #endregion
 
@@ -71,6 +70,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         for (int i = 0; i < vertices.Length; i++)
             vertices[i] = transform.localToWorldMatrix.MultiplyPoint(vertices[i]);
         
+        // カメラの作成時に使うため、水のPlaneの頂点をサイズを取得する
         Bounds bounds = mesh.bounds;
 
         // Rayとの衝突を測るためにその他GameObjectにColliderを付ける
@@ -82,74 +82,22 @@ public class BakeryDistanceByRay : MonoBehaviour
         // Vertex Colorを更新する
         mesh.SetColors(finalVertexColor);
 
-        // 最後の片づけ
+        // 後片付け
         Finish();
         
         // 処理時間測定
         Debug.Log("Bake処理終了！全体の処理時間：" + watch.ElapsedMilliseconds + " ms");
         
-        
         //////////////////////////////////////////////////
         // Texture保存
         //////////////////////////////////////////////////
         Debug.Log("Texture保存処理開始！");
-
-
-#region Texture作成用カメラの生成処理
-        // すでにTexture作成用カメラが存在する場合は、一度削除して新しく作成する
-        if (!cameraForBake.IsUnityNull())
-        {
-            DestroyImmediate(cameraForBake.gameObject);
-        }
         
-        // Texture作成用カメラを作成する
-        var goCameraForBake = new GameObject();
-        goCameraForBake.name = "CameraForBake";
-        cameraForBake = goCameraForBake.AddComponent<Camera>();
+        // Texture作成用カメラを生成する
+        CreateCameraForBake(bounds);
         
-        // 水の板(Mesh)を、Texture作成用カメラの親に設定し、上から見下ろす形にする
-        goCameraForBake.transform.rotation = Quaternion.Euler(new Vector3(90.0f, 0.0f, 0.0f));
-        goCameraForBake.transform.SetParent(gameObject.transform, false);
-        goCameraForBake.transform.localPosition += new Vector3(0, 0.5f / goCameraForBake.transform.lossyScale.y, 0);
-        
-        // 他のカメラに埋まらないように設定する
-        cameraForBake.depth = -1.0f;
-        
-        // 遠近は不要のため、OrthographicCameraに変更する
-        cameraForBake.orthographic = true;
-        // 大きい試錐台は不要のため、狭い範囲に設定する
-        cameraForBake.nearClipPlane = 0.0f;
-        cameraForBake.farClipPlane  = 1.0f;
-        //cameraForBake.orthographicSize = 1.0f;
-        cameraForBake.orthographicSize = Mathf.Max(bounds.size.x, bounds.size.z) / 2.0f;
-        var temp = cameraForBake.aspect;
-
-        // Texture作成用カメラの設定を調整する
-        cameraForBake.backgroundColor = Color.magenta;            // Debug用背景色
-        //cameraForBake.backgroundColor = Color.black;            // 背景色を黒にする
-        cameraForBake.clearFlags = CameraClearFlags.SolidColor;   // 背景色でクリアする
-        
-        // 新しく作成したカメラと、水の板(Mesh)に一時的にLayerを設定し、水の板だけレンダリングされるようにする
-        // (Layerはビルトインの設定であるWaterを使う）
-        cameraForBake.cullingMask = LayerMask.GetMask("Water"); // WaterのBit設定を取得し設定
-        // 後で元に戻すために、水の板(Mesh)の現在のLayerを取っておく
-        preMeshLayer = gameObject.layer;
-        // カメラのCullingMaskに合わせてLayerを設定する
-        gameObject.layer = LayerMask.NameToLayer("Water"); // Waterの番号を取得し設定
-        
-        
-        // Texture作成用カメラにセットするRenderTextureを生成
-        // (ここに映ったのが最終的に出力される)
-        RenderTexture cameraRenderTexture = new RenderTexture(
-            textureSize, 
-            textureSize, 
-            0,                         // No depth/stencil buffer
-            RenderTextureFormat.ARGB32,     // Standard colour format
-            RenderTextureReadWrite.sRGB     // No sRGB conversions
-        );
-        var preTargetTexture = cameraForBake.targetTexture;
-        cameraForBake.targetTexture = cameraRenderTexture;
-#endregion
+        // 実際にカメラの映像を保存する処理はカメラのレンダリング後に行う
+        //（正確にいうとOnEndCameraRendering()というメソッドで行っている）
     }
 
 #region Rayを飛ばして距離を測り、頂点カラーに格納する処理に関連するメソッド
@@ -304,58 +252,98 @@ public class BakeryDistanceByRay : MonoBehaviour
 #endregion
 
 #region Bakeした結果をテクスチャとして保存する処理に関連するメソッド
-    private void SaveBakeResultToTexture()
+    /// <summary>
+    /// Texture作成用カメラを生成するメソッド
+    /// </summary>
+    /// <param name="bounds"></param>
+    private void CreateCameraForBake(Bounds bounds)
     {
-        if (String.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+        // すでにTexture作成用カメラが存在する場合は、一度削除して新しく作成する
+        if (!cameraForBake.IsUnityNull())
         {
-            Debug.Log("正しい保存先を指定してください。");
-            return;
+            DestroyImmediate(cameraForBake.gameObject);
         }
         
-        //var currentRenderTexture = RenderTexture.active;
-        //var currentRenderTexture = Camera.main.targetTexture;
+        // Texture作成用カメラを作成する
+        var goCameraForBake = new GameObject();
+        goCameraForBake.name = "CameraForBake";
+        cameraForBake = goCameraForBake.AddComponent<Camera>();
         
-        //RenderTexture renderTexture = RenderTexture.GetTemporary(textureSize, textureSize);
-        //Camera.main.targetTexture = renderTexture;
-        //var currentRenderTexture = Camera.main.targetTexture;
-        //var preTargetTexture = Camera.main.targetTexture; 
-        //Camera.main.targetTexture = currentRenderTexture;
-        //RenderTexture.active = currentRenderTexture;
+        // 水の板(Mesh)を、Texture作成用カメラの親に設定し、上から見下ろす形にする
+        goCameraForBake.transform.rotation = Quaternion.Euler(new Vector3(90.0f, 0.0f, 0.0f));
+        goCameraForBake.transform.SetParent(gameObject.transform, false);
+        goCameraForBake.transform.localPosition += new Vector3(0, 0.5f / goCameraForBake.transform.lossyScale.y, 0);
+        
+        // 他のカメラに埋まらないように設定する
+        cameraForBake.depth = -1.0f;
+        
+        // 遠近は不要のため、OrthographicCameraに変更する
+        cameraForBake.orthographic = true;
+        // 大きい試錐台は不要のため、狭い範囲に設定する
+        cameraForBake.nearClipPlane = 0.0f;
+        cameraForBake.farClipPlane  = 1.0f;
+        cameraForBake.orthographicSize = Mathf.Max(bounds.size.x, bounds.size.z) / 2.0f;
+        var temp = cameraForBake.aspect;
 
-        //Graphics.Blit(null, currentRenderTexture);
+        // Texture作成用カメラの設定を調整する
+        cameraForBake.backgroundColor = Color.magenta;          // Debug用背景色を設定する
+        //cameraForBake.backgroundColor = Color.black;            // 背景色を黒にする
+        cameraForBake.clearFlags = CameraClearFlags.SolidColor;   // 背景色でクリアする
         
-        RenderTexture buffer = new RenderTexture(
+        // 新しく作成したカメラと、水の板(Mesh)に一時的にLayerを設定し、水の板だけレンダリングされるようにする
+        // (Layerはビルトインの設定であるWaterを使う）
+        cameraForBake.cullingMask = LayerMask.GetMask("Water"); // WaterのBit設定を取得し設定
+        // 後で元に戻すために、水の板(Mesh)の現在のLayerを取っておく
+        preMeshLayer = gameObject.layer;
+        // カメラのCullingMaskに合わせてLayerを設定する
+        gameObject.layer = LayerMask.NameToLayer("Water"); // Waterの番号を取得し設定
+        
+        // Texture作成用カメラにセットするRenderTextureを生成
+        // (ここに映ったのが最終的に出力される)
+        RenderTexture cameraRenderTexture = new RenderTexture(
             textureSize, 
             textureSize, 
             0,                         // No depth/stencil buffer
             RenderTextureFormat.ARGB32,     // Standard colour format
-            RenderTextureReadWrite.sRGB     // RenderTextureReadWrite.Linear // No sRGB conversions
+            RenderTextureReadWrite.sRGB     // No sRGB conversions
         );
-        // シェーダーを使ってSourceをDestにコピーする
-        //Graphics.Blit(currentRenderTexture, buffer, bakeMaterial);
-        //Graphics.Blit(currentRenderTexture, buffer);
-        Graphics.Blit(cameraForBake.targetTexture, buffer);
+        var preTargetTexture = cameraForBake.targetTexture;
+        cameraForBake.targetTexture = cameraRenderTexture;
+    }
+
+    /// <summary>
+    /// カメラのRenderTargetをpngファイルに変換して保存するメソッド
+    /// </summary>
+    /// <param name="cameraForPrint">ここに設定したカメラに映っているのを保存する</param>
+    private void SaveBakeResultToTexture(Camera cameraForPrint)
+    {
+        if (String.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+        {
+            EditorUtility.DisplayDialog("警告", "正しい保存先を指定してください。", "OK");
+            return;
+        }
         
-        // 現在のRenderTargetにRenderTextureを設定する（Graphics.SetRenderTargetと同様）
-        RenderTexture.active = buffer;
+        // 現在のRenderTargetにTexture作成用カメラのRenderTextureを設定する（Graphics.SetRenderTargetと同じ動き）
+        RenderTexture.active = cameraForPrint.targetTexture;
         
-        Texture2D outputTex = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
         // 現在のRenderTarget(Screen、またはRenderTexture)からPixelを読み取り、Texture2Dに書き込む
+        Texture2D outputTex = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
         outputTex.ReadPixels(
             new Rect(0, 0, textureSize, textureSize),   // Capture the whole texture
             0, 0,                                                 // Write starting at the top-left texel
             false                                           // No mipmaps
         );
 
+        // pngのバイトに変換する
         var pngByte = outputTex.EncodeToPNG();
 
+        // pngのバイトを保存先に保存する
         string filePath = directoryPath + "/" + fileName + ".png";
-        
         File.WriteAllBytes(filePath, pngByte);
         // 新しく作成したファイルを直ちに表示させる
         AssetDatabase.Refresh();    
         
-        // 変数の片づけ
+        // 後片付け
         RenderTexture.active = null;
         DestroyImmediate(outputTex);    // Destroyはゲーム中しか動作しないので、代わりにDestroyImmediateを使う
     }
@@ -377,8 +365,11 @@ public class BakeryDistanceByRay : MonoBehaviour
         }
         else if (cameraForBake.Equals(camera))
         {
-            preMaterial = gameObject.GetComponent<MeshRenderer>().material;
-            gameObject.GetComponent<MeshRenderer>().material = bakeMaterial;
+            // 現在のマテリアルを一時保存し、テクスチャ保存のためのシェーダーを装備させる
+            Material currentMat = gameObject.GetComponent<MeshRenderer>().material;
+            preMaterial = new Material(currentMat.shader);
+            preMaterial.CopyPropertiesFromMaterial(currentMat);
+            gameObject.GetComponent<MeshRenderer>().material.shader = bakeShader;
         }
     }    
     void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
@@ -389,10 +380,14 @@ public class BakeryDistanceByRay : MonoBehaviour
         }
         else if (cameraForBake.Equals(camera))
         {
-            SaveBakeResultToTexture();
-            isClickedBakeButton = false;
+            // カメラの映像をpngファイルとして保存する
+            SaveBakeResultToTexture(cameraForBake);
             
-            //gameObject.GetComponent<MeshRenderer>().material = bakeMaterial;
+            // BakeボタンのクリックのフラグをOffに変更
+            isClickedBakeButton = false;
+            // 後で元に戻すために、水の板(Mesh)の現在のLayerを取っておく
+            gameObject.layer = preMeshLayer;
+            // 元のマテリアルに戻す
             gameObject.GetComponent<MeshRenderer>().material = preMaterial;
             
             // 処理時間測定
@@ -424,7 +419,7 @@ public class BakeryDistanceByRayButton : Editor
         {
             if (!Application.isPlaying)
             {
-                bool res1 = EditorUtility.DisplayDialog("Alert", "Play Modeで実行してください", "OK");
+                bool res1 = EditorUtility.DisplayDialog("警告", "Play Modeで実行してください。", "OK");
             }
             else
             {

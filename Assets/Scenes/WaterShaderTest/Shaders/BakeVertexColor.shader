@@ -51,20 +51,9 @@ Shader "DebugShader/BakeVertexColor"
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
-                //OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
-                //OUT.positionHCS.z = OUT.positionHCS.w;
-                //OUT.positionHCS.xy = IN.positionOS.xy;
-                //OUT.positionHCS.zw = IN.positionOS.zz;
-                
-                //OUT.UV = IN.UV;
                 OUT.UV = TRANSFORM_TEX(IN.UV, _MainTex);
-                
                 OUT.vertexColor = IN.vertexColor;
-                //OUT.positionOS = IN.positionOS.xyw;
-                //const float3 positionWS = TransformObjectToWorld(IN.positionOS.xyz);
-                //OUT.positionOS = ComputeScreenPos(OUT.positionHCS);
-
-
+                
                 float4 positionOS = IN.positionOS;
                 
                 // World Space Scale Matrix
@@ -92,21 +81,15 @@ Shader "DebugShader/BakeVertexColor"
                 rotationMatrix[2] = float4(UNITY_MATRIX_M._m20 / scaleX, UNITY_MATRIX_M._m21 / scaleY, UNITY_MATRIX_M._m22 / scaleZ, 0);
                 rotationMatrix[3] = float4(0, 0, 0, 1);
 
-                // rotationMatrix[1][1] = cos(_Roate);
-                // rotationMatrix[1][2] = -sin(_Roate);
-                // rotationMatrix[2][1] = sin(_Roate);
-                // rotationMatrix[2][2] = cos(_Roate);
-
-                float4x4 moveMatrix;
                 // World Space Translate Matrix
+                float4x4 moveMatrix;
                 moveMatrix[0] = float4(1, 0, 0, UNITY_MATRIX_M._m03);
                 moveMatrix[1] = float4(0, 1, 0, UNITY_MATRIX_M._m13);
                 moveMatrix[2] = float4(0, 0, 1, UNITY_MATRIX_M._m23);
                 moveMatrix[3] = float4(0, 0, 0, UNITY_MATRIX_M._m33);
                 
                 float4x4 modelMatrix = mul(mul(moveMatrix, rotationMatrix), scaleMatrix);
-
-
+                
                 float4 positionWS = mul(modelMatrix, float4(positionOS.xyz, 1));
                 float4 positionVS = mul(UNITY_MATRIX_V, positionWS);
                 float4 positionCS = mul(UNITY_MATRIX_P, positionVS);
@@ -119,25 +102,10 @@ Shader "DebugShader/BakeVertexColor"
             {
                 half4 finalColor = 0.0;
                 half4 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.UV);
-                color.rgb = pow(color.rgb, 1/2.2); // Gamma Correction
-                finalColor.rgb = color.rgb;
-                finalColor.a = 1.0f;
-                //return finalColor;
+                //color.rgb = pow(color.rgb, 1/2.2); // Gamma Correction
                 
                 finalColor = half4(IN.vertexColor);
                 finalColor = abs(finalColor);
-                finalColor.a = 1.0f;
-                return finalColor;
-
-                finalColor.rgb = half3(0.0f, 0.0f, 0.0f);
-                //float2 uv = IN.positionOS.xy / IN.positionOS.z * 0.5 + 0.5;
-                //finalColor.rg = uv;
-                
-                // float2 pos;
-                // pos = IN.UV;
-                finalColor.rgb = half3(0.0f, 0.0f, 0.0f);
-                finalColor.rg = IN.UV;
-                
                 finalColor.a = 1.0f;
                 return finalColor;
             }
