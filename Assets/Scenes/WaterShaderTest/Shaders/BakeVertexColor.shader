@@ -81,6 +81,12 @@ Shader "DebugShader/BakeVertexColor"
                 rotationMatrix[2] = float4(UNITY_MATRIX_M._m20 / scaleX, UNITY_MATRIX_M._m21 / scaleY, UNITY_MATRIX_M._m22 / scaleZ, 0);
                 rotationMatrix[3] = float4(0, 0, 0, 1);
 
+                // Y軸に180度回転
+                rotationMatrix[0][0] = cos(PI);
+                rotationMatrix[0][2] = -sin(PI);
+                rotationMatrix[2][0] = sin(PI);
+                rotationMatrix[2][2] = cos(PI);
+                
                 // World Space Translate Matrix
                 float4x4 moveMatrix;
                 moveMatrix[0] = float4(1, 0, 0, UNITY_MATRIX_M._m03);
@@ -101,12 +107,16 @@ Shader "DebugShader/BakeVertexColor"
             half4 frag(Varyings IN) : SV_Target
             {
                 half4 finalColor = 0.0;
-                half4 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.UV);
                 //color.rgb = pow(color.rgb, 1/2.2); // Gamma Correction
                 
                 finalColor = half4(IN.vertexColor);
-                finalColor = abs(finalColor);
+                //finalColor = abs(finalColor);
+                finalColor = (finalColor + 1.0f) * 0.5f;
                 finalColor.a = 1.0f;
+                
+                //finalColor.rg = IN.UV;
+                //finalColor.b = 0.0f;
+                
                 return finalColor;
             }
             ENDHLSL

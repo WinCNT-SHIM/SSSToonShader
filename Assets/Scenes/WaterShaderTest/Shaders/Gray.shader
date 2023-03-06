@@ -57,9 +57,12 @@ Shader "DebugShader/Gray"
                 half4 finalColor = 0.0;
                 
                 half4 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
-                color.rgb = pow(color.rgb, 1/2.2);  // Gamma Correction
+                //color.rgb = pow(color.rgb, 1/2.2);  // Gamma Correction
                 //finalColor.rgb = color.rgb;
-                finalColor.rgb = dot(color.rgb, float3(0.3, 0.59, 0.11));
+                //finalColor.rgb = dot(color.rgb, float3(0.3, 0.59, 0.11));
+                finalColor = color;
+                finalColor.a = color.a;
+                //finalColor = abs(finalColor);
                 finalColor.a = 1.0f;
                 
                 return finalColor;
