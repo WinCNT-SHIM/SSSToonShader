@@ -36,6 +36,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _BakeTexture:
+        m_Texture: {fileID: 2800000, guid: 20a37ae597caef7448004c59f1669dfb, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DIST:
         m_Texture: {fileID: 2800000, guid: 81ad25455c07a74418d3e8d2fd67f565, type: 3}
         m_Scale: {x: 1, y: 1}
