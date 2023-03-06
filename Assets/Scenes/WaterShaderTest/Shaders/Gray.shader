@@ -60,7 +60,8 @@ Shader "DebugShader/Gray"
                 //color.rgb = pow(color.rgb, 1/2.2);  // Gamma Correction
                 //finalColor.rgb = color.rgb;
                 //finalColor.rgb = dot(color.rgb, float3(0.3, 0.59, 0.11));
-                finalColor = color;
+                //finalColor = color;
+                finalColor = color * 2.0f - 1.0f;
                 finalColor.a = color.a;
                 //finalColor = abs(finalColor);
                 finalColor.a = 1.0f;

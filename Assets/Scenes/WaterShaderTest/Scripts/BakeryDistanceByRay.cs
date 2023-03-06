@@ -230,9 +230,9 @@ public class BakeryDistanceByRay : MonoBehaviour
             // x, y, zを正規化し、距離をかけて格納する
             Vector3 tmpVector3 = new Vector3(tmpDistance[i].x, tmpDistance[i].y, tmpDistance[i].z);
             tmpVector3 = tmpVector3.normalized;
-            tmpDistance[i].x = tmpVector3.x;
-            tmpDistance[i].y = tmpVector3.y;
-            tmpDistance[i].z = tmpVector3.z;
+            tmpDistance[i].x = tmpVector3.x * tmpDistance[i].w;
+            tmpDistance[i].y = tmpVector3.y * tmpDistance[i].w;
+            tmpDistance[i].z = tmpVector3.z * tmpDistance[i].w;
         }
 
         // Vertex Color
