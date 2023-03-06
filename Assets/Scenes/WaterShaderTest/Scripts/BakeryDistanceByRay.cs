@@ -23,14 +23,12 @@ public class BakeryDistanceByRay : MonoBehaviour
     private string fileName = "BakeResult";
     
     [SerializeField]
-    private Texture texture;
-    [SerializeField]
     private Material bakeMaterial;
-    [SerializeField]
-    private RenderTexture currentRenderTexture;
 #endregion
 
 #region Variables
+    // 処理時間測定用変数
+    private System.Diagnostics.Stopwatch watch;
     // 距離を取る方向を格納する変数
     private List<Vector3> _offsetVector = new List<Vector3>();
     // デプスの距離を取る方向を格納する変数
@@ -45,7 +43,11 @@ public class BakeryDistanceByRay : MonoBehaviour
     private Camera cameraForBake;
     // Bakeボタンのフラグ用変数
     private bool isClickedBakeButton;
-#endregion
+    // Mesh(のGameObject)に設定されたLayer（処理中一時的に変更し戻すための変数）
+    private int preMeshLayer;
+    // 
+    private Material preMaterial;
+    #endregion
 
     public void Bake()
     {
@@ -53,7 +55,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         
         Debug.Log("Bake処理開始！");
         // 処理時間測定
-        System.Diagnostics.Stopwatch watch = new System.Diagnostics.Stopwatch();
+        watch = new System.Diagnostics.Stopwatch();
         watch.Start();
         
         // 初期化
@@ -69,6 +71,8 @@ public class BakeryDistanceByRay : MonoBehaviour
         for (int i = 0; i < vertices.Length; i++)
             vertices[i] = transform.localToWorldMatrix.MultiplyPoint(vertices[i]);
         
+        Bounds bounds = mesh.bounds;
+
         // Rayとの衝突を測るためにその他GameObjectにColliderを付ける
         AttachColliderToOthers();
         
@@ -89,8 +93,9 @@ public class BakeryDistanceByRay : MonoBehaviour
         // Texture保存
         //////////////////////////////////////////////////
         Debug.Log("Texture保存処理開始！");
-        
-        
+
+
+#region Texture作成用カメラの生成処理
         // すでにTexture作成用カメラが存在する場合は、一度削除して新しく作成する
         if (!cameraForBake.IsUnityNull())
         {
@@ -102,26 +107,49 @@ public class BakeryDistanceByRay : MonoBehaviour
         goCameraForBake.name = "CameraForBake";
         cameraForBake = goCameraForBake.AddComponent<Camera>();
         
+        // 水の板(Mesh)を、Texture作成用カメラの親に設定し、上から見下ろす形にする
+        goCameraForBake.transform.rotation = Quaternion.Euler(new Vector3(90.0f, 0.0f, 0.0f));
+        goCameraForBake.transform.SetParent(gameObject.transform, false);
+        goCameraForBake.transform.localPosition += new Vector3(0, 0.5f / goCameraForBake.transform.lossyScale.y, 0);
+        
+        // 他のカメラに埋まらないように設定する
+        cameraForBake.depth = -1.0f;
+        
+        // 遠近は不要のため、OrthographicCameraに変更する
+        cameraForBake.orthographic = true;
+        // 大きい試錐台は不要のため、狭い範囲に設定する
+        cameraForBake.nearClipPlane = 0.0f;
+        cameraForBake.farClipPlane  = 1.0f;
+        //cameraForBake.orthographicSize = 1.0f;
+        cameraForBake.orthographicSize = Mathf.Max(bounds.size.x, bounds.size.z) / 2.0f;
+        var temp = cameraForBake.aspect;
+
         // Texture作成用カメラの設定を調整する
-        cameraForBake.backgroundColor = Color.cyan;            // Debug用背景色
+        cameraForBake.backgroundColor = Color.magenta;            // Debug用背景色
         //cameraForBake.backgroundColor = Color.black;            // 背景色を黒にする
         cameraForBake.clearFlags = CameraClearFlags.SolidColor;   // 背景色でクリアする
         
-
+        // 新しく作成したカメラと、水の板(Mesh)に一時的にLayerを設定し、水の板だけレンダリングされるようにする
+        // (Layerはビルトインの設定であるWaterを使う）
+        cameraForBake.cullingMask = LayerMask.GetMask("Water"); // WaterのBit設定を取得し設定
+        // 後で元に戻すために、水の板(Mesh)の現在のLayerを取っておく
+        preMeshLayer = gameObject.layer;
+        // カメラのCullingMaskに合わせてLayerを設定する
+        gameObject.layer = LayerMask.NameToLayer("Water"); // Waterの番号を取得し設定
+        
+        
+        // Texture作成用カメラにセットするRenderTextureを生成
+        // (ここに映ったのが最終的に出力される)
+        RenderTexture cameraRenderTexture = new RenderTexture(
+            textureSize, 
+            textureSize, 
+            0,                         // No depth/stencil buffer
+            RenderTextureFormat.ARGB32,     // Standard colour format
+            RenderTextureReadWrite.sRGB     // No sRGB conversions
+        );
         var preTargetTexture = cameraForBake.targetTexture;
-        cameraForBake.targetTexture = currentRenderTexture;
-        //goCameraForBake.transform.position.Set(0.0f, 0.0f, -10.0f);
-        goCameraForBake.transform.position += new Vector3(0.0f, 0.0f, -2.0f);
-
-        // Bakeした結果をpngファイルに変換して保存する
-        //SaveBakeResultToTexture();
-        
-        
-        // // Texture作成用カメラを削除
-        // DestroyImmediate(goCameraForBake);
-        
-        watch.Stop();
-        Debug.Log("Texture保存処理終了！全体の処理時間：" + watch.ElapsedMilliseconds + " ms");
+        cameraForBake.targetTexture = cameraRenderTexture;
+#endregion
     }
 
 #region Rayを飛ばして距離を測り、頂点カラーに格納する処理に関連するメソッド
@@ -301,13 +329,12 @@ public class BakeryDistanceByRay : MonoBehaviour
             textureSize, 
             0,                         // No depth/stencil buffer
             RenderTextureFormat.ARGB32,     // Standard colour format
-            //RenderTextureReadWrite.Linear   // No sRGB conversions
-            RenderTextureReadWrite.sRGB     // No sRGB conversions
+            RenderTextureReadWrite.sRGB     // RenderTextureReadWrite.Linear // No sRGB conversions
         );
         // シェーダーを使ってSourceをDestにコピーする
         //Graphics.Blit(currentRenderTexture, buffer, bakeMaterial);
         //Graphics.Blit(currentRenderTexture, buffer);
-        Graphics.Blit(currentRenderTexture, buffer);
+        Graphics.Blit(cameraForBake.targetTexture, buffer);
         
         // 現在のRenderTargetにRenderTextureを設定する（Graphics.SetRenderTargetと同様）
         RenderTexture.active = buffer;
@@ -329,7 +356,6 @@ public class BakeryDistanceByRay : MonoBehaviour
         AssetDatabase.Refresh();    
         
         // 変数の片づけ
-        //Camera.main.targetTexture = preTargetTexture;
         RenderTexture.active = null;
         DestroyImmediate(outputTex);    // Destroyはゲーム中しか動作しないので、代わりにDestroyImmediateを使う
     }
@@ -337,15 +363,24 @@ public class BakeryDistanceByRay : MonoBehaviour
 
     void Start()
     {
+        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    void Update() { }
     
+    void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+    {
+        if (!isClickedBakeButton)
+        {
+            return;
+        }
+        else if (cameraForBake.Equals(camera))
+        {
+            preMaterial = gameObject.GetComponent<MeshRenderer>().material;
+            gameObject.GetComponent<MeshRenderer>().material = bakeMaterial;
+        }
+    }    
     void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
     {
         if (!isClickedBakeButton)
@@ -354,33 +389,23 @@ public class BakeryDistanceByRay : MonoBehaviour
         }
         else if (cameraForBake.Equals(camera))
         {
-            
             SaveBakeResultToTexture();
             isClickedBakeButton = false;
+            
+            //gameObject.GetComponent<MeshRenderer>().material = bakeMaterial;
+            gameObject.GetComponent<MeshRenderer>().material = preMaterial;
+            
+            // 処理時間測定
+            watch.Stop();
+            Debug.Log("Texture保存処理終了！全体の処理時間：" + watch.ElapsedMilliseconds + " ms");
         }
     }
-    
-    void OnRenderObject()
-    {
-        if ((cameraForBake == null) || (cameraForBake.cullingMask & (1 << gameObject.layer)) == 0)
-        {
-            return;
-        }
-        if (mesh != null)
-        {
-            bakeMaterial.SetPass(0);
-            //Graphics.DrawMeshNow(mesh, Vector3.zero, Quaternion.identity);
-            Graphics.DrawMeshNow(
-                mesh,
-                Vector3.zero,
-                Quaternion.Euler(new Vector3(-90.0f, 0.0f, 0.0f))
-            );
-        }
-    }
-    
+
     void OnDestroy()
     {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
         RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+        Destroy(cameraForBake);
     }
 }
 
@@ -396,6 +421,15 @@ public class BakeryDistanceByRayButton : Editor
         base.OnInspectorGUI();
         BakeryDistanceByRay comp = (BakeryDistanceByRay)target;
         if (GUILayout.Button("Bake"))
-            comp.Bake();
+        {
+            if (!Application.isPlaying)
+            {
+                bool res1 = EditorUtility.DisplayDialog("Alert", "Play Modeで実行してください", "OK");
+            }
+            else
+            {
+                comp.Bake();
+            }
+        }
     }
 }
