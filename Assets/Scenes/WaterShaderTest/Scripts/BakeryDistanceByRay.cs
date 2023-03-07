@@ -10,7 +10,7 @@ using UnityEngine.Rendering;
 public class BakeryDistanceByRay : MonoBehaviour
 {
 #region Properties
-    [SerializeField] [Range(0.001f, 1.0f)] [Tooltip("ここで設定した長さのRayを各頂点から飛ばします。")]
+    [SerializeField] [Range(0.001f, 5.0f)] [Tooltip("ここで設定した長さのRayを各頂点から飛ばします。")]
     private float maxDistance = 1.0f;
     [SerializeField] [Tooltip("各頂点から飛ばすRayをDebug用として描画します。")]
     private bool drawDebugRay = false;
@@ -77,7 +77,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         AttachColliderToOthers();
         
         // 頂点を位置からRayを飛ばしてその他GameObjectとの距離を計算する
-        var finalVertexColor = ComputeDistanceToOthers(ref vertices);
+        var finalVertexColor = ComputeDistanceToOthers(bounds, ref vertices);
 
         // Vertex Colorを更新する
         mesh.SetColors(finalVertexColor);
@@ -158,6 +158,15 @@ public class BakeryDistanceByRay : MonoBehaviour
     private void AttachColliderToOthers()
     {
         var parentGameObj = transform.parent;
+        
+        // 水の平面が最上位ゲームオブジェクトの場合は処理をしない 
+        if (parentGameObj == null)
+        {
+            bool res1 = EditorUtility.DisplayDialog("警告", "このスクリプトのゲームオブジェクトが最上位GameObjectと設定されており、Bake処理ができません。" +
+                                                          "\n他のGameObjectを最上位に設定してからBake処理を行ってください。", "OK");
+            return;
+        }
+        
         for (int i = 0; i < parentGameObj.childCount; i++)
         {
             if (gameObject.transform == parentGameObj.GetChild(i))
@@ -173,14 +182,18 @@ public class BakeryDistanceByRay : MonoBehaviour
             }
         }
     }
-    
+
     /// <summary>
     /// 頂点から他のオブジェクトの頂点への距離を計算し、頂点カラーに格納して返却する
     /// </summary>
+    /// <param name="bounds">水用PlaneのBounds</param>
     /// <param name="vertices">距離を計算する頂点</param>
     /// <returns>距離を格納した頂点カラー</returns>
-    private Color[] ComputeDistanceToOthers(ref Vector3[] vertices)
+    private Color[] ComputeDistanceToOthers(Bounds bounds, ref Vector3[] vertices)
     {
+        var localScale = transform.localScale;
+        var distSclOffset = Mathf.Max(localScale.x, localScale.z) / 10.0f;
+        
         Vector4[] tmpDistance = new Vector4[vertices.Length];
         for (int i = 0; i < tmpDistance.Length; i++)
             tmpDistance[i] = new Vector4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -194,34 +207,35 @@ public class BakeryDistanceByRay : MonoBehaviour
             {
                 // デバッグ用のRayを描画する
                 if (drawDebugRay)
-                    Debug.DrawRay(targetVertex, forward * maxDistance, Color.red, 2.0f);
+                    Debug.DrawRay(targetVertex,  maxDistance * distSclOffset * forward, Color.red, 1.0f);
                 
                 // Rayを飛ばし衝突したものがあるかチェック
-                bool isCollision = Physics.Raycast(targetVertex, forward, out RaycastHit raycastHit, maxDistance);
+                bool isCollision = Physics.Raycast(targetVertex, forward, out RaycastHit raycastHit, distSclOffset * maxDistance);
                 if (isCollision)
                 {
-                    // 衝突した表面の法線を足す
+                    // 衝突したRayのベクターを足す
                     tmpDistance[i].x += forward.x;
                     tmpDistance[i].y += forward.y;
                     tmpDistance[i].z += forward.z;
                     
                     // 頂点とその他オブジェクトが近いほど、値を１にする
-                    float adjustDistanceValue = 1.0f - raycastHit.distance;
+                    //float adjustDistanceValue = 1.0f - raycastHit.distance;
+                    float adjustDistanceValue = (distSclOffset * maxDistance - raycastHit.distance) / (distSclOffset * maxDistance);
                     if (tmpDistance[i].w < adjustDistanceValue)
                         tmpDistance[i].w = adjustDistanceValue;
                 }
                 
                 // Colliderの裏側も検知するため、Rayを逆方向にしてもう１度距離を測る
-                isCollision = Physics.Raycast((Vector3)targetVertex + forward * maxDistance, -forward, out raycastHit, maxDistance);
+                isCollision = Physics.Raycast((Vector3)targetVertex + (distSclOffset * maxDistance * forward), -forward, out RaycastHit reverseRaycastHit, distSclOffset * maxDistance);
                 if (isCollision)
                 {
-                    // 衝突した表面の法線を足す
-                    tmpDistance[i].x += -forward.x;
-                    tmpDistance[i].y += -forward.y;
-                    tmpDistance[i].z += -forward.z;
+                    // 衝突したRayのベクターを足す
+                    tmpDistance[i].x += forward.x;
+                    tmpDistance[i].y += forward.y;
+                    tmpDistance[i].z += forward.z;
                     
                     // Rayを逆方向にしたため、そのままの距離を格納する（逆方向なので、調整しなくとも近いほど１となる）
-                    float adjustDistanceValue = raycastHit.distance;
+                    float adjustDistanceValue = reverseRaycastHit.distance / (distSclOffset * maxDistance);
                     if (tmpDistance[i].w < adjustDistanceValue)
                         tmpDistance[i].w = adjustDistanceValue;
                 }
