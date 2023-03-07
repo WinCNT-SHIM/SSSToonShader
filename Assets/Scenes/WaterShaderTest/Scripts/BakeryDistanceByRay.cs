@@ -213,31 +213,58 @@ public class BakeryDistanceByRay : MonoBehaviour
                 bool isCollision = Physics.Raycast(targetVertex, forward, out RaycastHit raycastHit, distSclOffset * maxDistance);
                 if (isCollision)
                 {
+                    // 疑似デプス
+                    float approxDepth = 0.0f;
+                    var temp = raycastHit.transform.gameObject.GetComponent<MeshRenderer>();
+                    if (temp != null)
+                    {
+                        // 疑似デプス（衝突した箇所 - 衝突したオブジェクトの最下位置）を計算する
+                        approxDepth = Mathf.Max(0, raycastHit.point.y - temp.bounds.min.y);
+                        //Debug.DrawRay(raycastHit.point,  new Vector3(0.0f, -approxDepth, 0.0f), Color.blue, 10.0f);
+                    }
+                    
+                    // 距離が疑似デプスより高い場合は衝突しなかったことにする
+                    if (approxDepth < raycastHit.distance)
+                        continue;
+                    
                     // 衝突したRayのベクターを足す
                     tmpDistance[i].x += forward.x;
                     tmpDistance[i].y += forward.y;
                     tmpDistance[i].z += forward.z;
                     
                     // 頂点とその他オブジェクトが近いほど、値を１にする
-                    //float adjustDistanceValue = 1.0f - raycastHit.distance;
-                    float adjustDistanceValue = (distSclOffset * maxDistance - raycastHit.distance) / (distSclOffset * maxDistance);
-                    if (tmpDistance[i].w < adjustDistanceValue)
-                        tmpDistance[i].w = adjustDistanceValue;
+                    float adjDistVal = (distSclOffset * maxDistance - raycastHit.distance) / (distSclOffset * maxDistance);
+                    if (tmpDistance[i].w < adjDistVal)
+                        tmpDistance[i].w = adjDistVal;
                 }
                 
                 // Colliderの裏側も検知するため、Rayを逆方向にしてもう１度距離を測る
-                isCollision = Physics.Raycast((Vector3)targetVertex + (distSclOffset * maxDistance * forward), -forward, out RaycastHit reverseRaycastHit, distSclOffset * maxDistance);
+                isCollision = Physics.Raycast((Vector3)targetVertex + (distSclOffset * maxDistance * forward), -forward, out raycastHit, distSclOffset * maxDistance);
                 if (isCollision)
                 {
+                    // 疑似デプス
+                    float approxDepth = 0.0f;
+                    var temp = raycastHit.transform.gameObject.GetComponent<MeshRenderer>();
+                    if (temp != null)
+                    {
+                        // 疑似デプス（衝突した箇所 - 衝突したオブジェクトの最下位置）を計算する
+                        approxDepth = Mathf.Max(0, raycastHit.point.y - temp.bounds.min.y);
+                        //Debug.DrawRay(raycastHit.point,  new Vector3(0.0f, -approxDepth, 0.0f), Color.blue, 10.0f);
+                    }
+                    
+                    // 距離が疑似デプスより長い場合は衝突しなかったことにする
+                    if (approxDepth < raycastHit.distance)
+                        continue;
+                    
                     // 衝突したRayのベクターを足す
                     tmpDistance[i].x += forward.x;
                     tmpDistance[i].y += forward.y;
                     tmpDistance[i].z += forward.z;
                     
                     // Rayを逆方向にしたため、そのままの距離を格納する（逆方向なので、調整しなくとも近いほど１となる）
-                    float adjustDistanceValue = reverseRaycastHit.distance / (distSclOffset * maxDistance);
-                    if (tmpDistance[i].w < adjustDistanceValue)
-                        tmpDistance[i].w = adjustDistanceValue;
+                    float adjDistVal = raycastHit.distance / (distSclOffset * maxDistance);
+                    if (tmpDistance[i].w < adjDistVal)
+                        tmpDistance[i].w = adjDistVal;
                 }
             }
 
