@@ -366,6 +366,11 @@ public class BakeryDistanceByRay : MonoBehaviour
         else if (cameraForBake.Equals(camera))
         {
             // 現在のマテリアルを一時保存し、テクスチャ保存のためのシェーダーを装備させる
+            if (gameObject.GetComponent<MeshRenderer>() == null)
+            {
+                EditorUtility.DisplayDialog("警告", "オブジェクトにMeshRendererがありません。", "OK");
+                return;
+            }
             Material currentMat = gameObject.GetComponent<MeshRenderer>().material;
             preMaterial = new Material(currentMat.shader);
             preMaterial.CopyPropertiesFromMaterial(currentMat);
@@ -388,7 +393,8 @@ public class BakeryDistanceByRay : MonoBehaviour
             // 後で元に戻すために、水の板(Mesh)の現在のLayerを取っておく
             gameObject.layer = preMeshLayer;
             // 元のマテリアルに戻す
-            gameObject.GetComponent<MeshRenderer>().material = preMaterial;
+            if (gameObject.GetComponent<MeshRenderer>() != null)
+                gameObject.GetComponent<MeshRenderer>().material = preMaterial;
             
             // 処理時間測定
             watch.Stop();
