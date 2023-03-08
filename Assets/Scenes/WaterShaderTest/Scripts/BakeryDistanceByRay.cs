@@ -220,7 +220,7 @@ public class BakeryDistanceByRay : MonoBehaviour
                     {
                         // 疑似デプス（衝突した箇所 - 衝突したオブジェクトの最下位置）を計算する
                         approxDepth = Mathf.Max(0, raycastHit.point.y - temp.bounds.min.y);
-                        //Debug.DrawRay(raycastHit.point,  new Vector3(0.0f, -approxDepth, 0.0f), Color.blue, 10.0f);
+                        approxDepth = MathF.Min(approxDepth, Mathf.Max(0, temp.bounds.max.y - raycastHit.point.y));
                     }
                     
                     // 距離が疑似デプスより高い場合は衝突しなかったことにする
@@ -249,6 +249,7 @@ public class BakeryDistanceByRay : MonoBehaviour
                     {
                         // 疑似デプス（衝突した箇所 - 衝突したオブジェクトの最下位置）を計算する
                         approxDepth = Mathf.Max(0, raycastHit.point.y - temp.bounds.min.y);
+                        approxDepth = MathF.Min(approxDepth, Mathf.Max(0, temp.bounds.max.y - raycastHit.point.y));
                         //Debug.DrawRay(raycastHit.point,  new Vector3(0.0f, -approxDepth, 0.0f), Color.blue, 10.0f);
                     }
                     
