@@ -61,7 +61,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         Initialize();
         
         // GameObjectのMeshの情報を取得する
-        mesh = GetComponent<MeshFilter>().sharedMesh;
+        mesh = GetComponent<MeshFilter>().mesh;
         if (mesh == null)
             return;
         
@@ -232,6 +232,7 @@ public class BakeryDistanceByRay : MonoBehaviour
                         continue;
 
                     var maxDistanceCutoff = MathF.Min(approxDepth, realMaxDistance);
+                    //var maxDistanceCutoff = realMaxDistance;
                     
                     // 衝突したRayのベクターを足す
                     tmpDistance[i].x += forward.x;
@@ -244,39 +245,40 @@ public class BakeryDistanceByRay : MonoBehaviour
                         tmpDistance[i].w = adjDistVal;
                 }
                 
-                // Colliderの裏側も検知するため、Rayを逆方向にしてもう１度距離を測る
-                isCollision = Physics.Raycast((Vector3)targetVertex + (realMaxDistance * forward), -forward, out raycastHit, realMaxDistance);
-                if (isCollision)
-                {
-                    // 距離
-                    var distance = raycastHit.distance;
-                    // 疑似デプス
-                    float approxDepth = 0.0f;
-                    var temp = raycastHit.transform.gameObject.GetComponent<MeshRenderer>();
-                    if (temp != null)
-                    {
-                        // 疑似デプス（衝突した箇所 - 衝突したオブジェクトの最下位置）を計算する
-                        approxDepth = Mathf.Max(0, raycastHit.point.y - temp.bounds.min.y);
-                        approxDepth = MathF.Min(approxDepth, Mathf.Max(0, temp.bounds.max.y - raycastHit.point.y));
-                        //Debug.DrawRay(raycastHit.point,  new Vector3(0.0f, -approxDepth, 0.0f), Color.blue, 10.0f);
-                    }
-                    
-                    // 距離が疑似デプスより長い場合は衝突しなかったことにする
-                    if (approxDepth < distance)
-                        continue;
-                    
-                    var maxDistanceCutoff = MathF.Min(approxDepth, realMaxDistance);
-                    
-                    // 衝突したRayのベクターを足す
-                    tmpDistance[i].x += forward.x;
-                    tmpDistance[i].y += forward.y;
-                    tmpDistance[i].z += forward.z;
-                    
-                    // Rayを逆方向にしたため、そのままの距離を格納する（逆方向なので、調整しなくとも近いほど１となる）
-                    float adjDistVal = distance / maxDistanceCutoff;
-                    if (tmpDistance[i].w < adjDistVal)
-                        tmpDistance[i].w = adjDistVal;
-                }
+                // // Colliderの裏側も検知するため、Rayを逆方向にしてもう１度距離を測る
+                // isCollision = Physics.Raycast((Vector3)targetVertex + (realMaxDistance * forward), -forward, out raycastHit, realMaxDistance);
+                // if (isCollision)
+                // {
+                //     // 距離
+                //     var distance = raycastHit.distance;
+                //     // 疑似デプス
+                //     float approxDepth = 0.0f;
+                //     var temp = raycastHit.transform.gameObject.GetComponent<MeshRenderer>();
+                //     if (temp != null)
+                //     {
+                //         // 疑似デプス（衝突した箇所 - 衝突したオブジェクトの最下位置）を計算する
+                //         approxDepth = Mathf.Max(0, raycastHit.point.y - temp.bounds.min.y);
+                //         approxDepth = MathF.Min(approxDepth, Mathf.Max(0, temp.bounds.max.y - raycastHit.point.y));
+                //         //Debug.DrawRay(raycastHit.point,  new Vector3(0.0f, -approxDepth, 0.0f), Color.blue, 10.0f);
+                //     }
+                //     
+                //     // 距離が疑似デプスより長い場合は衝突しなかったことにする
+                //     if (approxDepth < distance)
+                //         continue;
+                //     
+                //     var maxDistanceCutoff = MathF.Min(approxDepth, realMaxDistance);
+                //     //var maxDistanceCutoff = realMaxDistance;
+                //     
+                //     // 衝突したRayのベクターを足す
+                //     tmpDistance[i].x += forward.x;
+                //     tmpDistance[i].y += forward.y;
+                //     tmpDistance[i].z += forward.z;
+                //     
+                //     // Rayを逆方向にしたため、そのままの距離を格納する（逆方向なので、調整しなくとも近いほど１となる）
+                //     float adjDistVal = distance / maxDistanceCutoff;
+                //     if (tmpDistance[i].w < adjDistVal)
+                //         tmpDistance[i].w = adjDistVal;
+                // }
             }
 
             // x, y, zを正規化し、距離をかけて格納する
