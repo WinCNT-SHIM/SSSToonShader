@@ -61,7 +61,7 @@ public class BakeryDistanceByRay : MonoBehaviour
         Initialize();
         
         // GameObjectのMeshの情報を取得する
-        mesh = GetComponent<MeshFilter>().mesh;
+        mesh = GetComponent<MeshFilter>().sharedMesh;
         if (mesh == null)
             return;
         
