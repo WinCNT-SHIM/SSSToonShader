@@ -81,11 +81,13 @@ Shader "DebugShader/BakeVertexColor"
                 rotationMatrix[2] = float4(UNITY_MATRIX_M._m20 / scaleX, UNITY_MATRIX_M._m21 / scaleY, UNITY_MATRIX_M._m22 / scaleZ, 0);
                 rotationMatrix[3] = float4(0, 0, 0, 1);
 
-                // Y軸に180度回転
-                rotationMatrix[0][0] = cos(PI);
-                rotationMatrix[0][2] = -sin(PI);
-                rotationMatrix[2][0] = sin(PI);
-                rotationMatrix[2][2] = cos(PI);
+                // PlaneのUVに合わせるためY軸に180度回転
+                float4x4 adjustRotate;
+                adjustRotate[0] = float4(cos(PI),   0,      -sin(PI),   0);
+                adjustRotate[1] = float4(0,         0,      0,          0);
+                adjustRotate[2] = float4(sin(PI),   0,      cos(PI),    0);
+                adjustRotate[3] = float4(0,         0,      0,          1);
+                rotationMatrix = mul(rotationMatrix, adjustRotate);
                 
                 // World Space Translate Matrix
                 float4x4 moveMatrix;
