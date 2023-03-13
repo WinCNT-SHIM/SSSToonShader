@@ -81,7 +81,7 @@ Shader "DebugShader/BakeVertexColor"
                 rotationMatrix[2] = float4(UNITY_MATRIX_M._m20 / scaleX, UNITY_MATRIX_M._m21 / scaleY, UNITY_MATRIX_M._m22 / scaleZ, 0);
                 rotationMatrix[3] = float4(0, 0, 0, 1);
 
-                // PlaneのUVに合わせるためY軸に180度回転
+                // PlaneのUVに合わせるためY軸で180度回転
                 float4x4 adjustRotate;
                 adjustRotate[0] = float4(cos(PI),   0,      -sin(PI),   0);
                 adjustRotate[1] = float4(0,         0,      0,          0);
