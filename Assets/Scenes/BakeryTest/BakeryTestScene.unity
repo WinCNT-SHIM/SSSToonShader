@@ -288,7 +288,7 @@ MonoBehaviour:
   renderSettingsHackAORadius: 1
   renderSettingsShowAOSettings: 1
   renderSettingsShowTasks: 1
-  renderSettingsShowTasks2: 0
+  renderSettingsShowTasks2: 1
   renderSettingsShowPaths: 1
   renderSettingsShowNet: 1
   renderSettingsOcclusionProbes: 0
