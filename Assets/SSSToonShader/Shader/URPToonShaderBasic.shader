@@ -24,8 +24,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
         _RimVerticalOffset ("Rim Vertical Offset", Range(-1, 1)) = 0
         
         [Space(15)][Header(Emission)]
-        [HDR] _EmissionColor ("EmissionColor", Color) = (0, 0, 0, 1)
+        [HDR] _EmissionColor ("Emission Color", Color) = (0, 0, 0, 1)
     }
+    
     SubShader
     {
         // SubShader Tags define when and under which conditions a SubShader block or a pass is executed.
@@ -275,29 +276,69 @@ Shader "SSSToonShader/URPToonShaderBasic"
             Cull Off
             
             HLSLPROGRAM
-            #include"UnityStandardMeta.cginc"
-
-            #pragma vertex vert_meta
-            #pragma fragment frag_meta_Toon
+            
+            #pragma vertex UniversalVertexMeta
+            // #pragma vertex UniversalVertexMeta_Toon
+            // #pragma fragment UniversalFragmentMetaLit
+            #pragma fragment UniversalFragmentMeta_Toon
+            
             #pragma shader_feature _EMISSION
-            #pragma shader_feature _METALLICGLOSSMAP
-            #pragma shader_feature ___ _DETAIL_MULX2
-
+            // #pragma shader_feature _METALLICGLOSSMAP
+            // #pragma shader_feature ___ _DETAIL_MULX2
+            // #pragma shader_feature _ _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+            // #pragma shader_feature EDITOR_VISUALIZATION
+            
+            //#include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            //#include "Packages/com.unity.render-pipelines.universal/Shaders/LitMetaPass.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            //#include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            //#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/MetaInput.hlsl"
+            
+            TEXTURE2D(_BaseMap);
+            SAMPLER(sampler_BaseMap);
+            
             CBUFFER_START(UnityPerMaterial)
-            sampler2D _BaseMap;
-            half4 _BaseColor;
+                float4 _BaseMap_ST;
+            
+                half4 _BaseColor;
+                half4 _ShadowColor1;
+                half4 _ShadowColor2;
+                half4 _SpecularColor;
+                half4 _RimColor;
+            
+                half4 _EmissionColor;
+            
+                half _ShadowPower1;     
+                half _ShadowPower2;     
+                half _SpecularPower;    
+                half _RimPower;
+                half _RimThreshold;
+                half _RimHorizonOffset;
+                half _RimVerticalOffset;
             CBUFFER_END
             
-            float4 frag_meta_Toon(v2f_meta i): SV_Target
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/UniversalMetaPass.hlsl"
+            
+            // Varyings UniversalVertexMeta_Toon(Attributes input)
+            // {
+            //     Varyings output = (Varyings)0;
+            //     output.positionCS = UnityMetaVertexPosition(input.positionOS.xyz, input.uv1, input.uv2);
+            //     output.uv = TRANSFORM_TEX(input.uv0, _BaseMap);
+            //     return output;
+            // }
+            
+            float4 UniversalFragmentMeta_Toon(Varyings i): SV_Target
             {
                 UnityMetaInput o;
-                UNITY_INITIALIZE_OUTPUT(UnityMetaInput, o);
+                o = (UnityMetaInput)0;
 
-                half4 c = tex2D(_BaseMap, i.uv);
+                half4 c = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv);
                 o.Albedo = half3(c.rgb * _BaseColor.rgb);
                 //o.Emission = Emission(i.uv.xy);
-                o.Emission = _EmissionColor;
+                o.Emission = _EmissionColor.rgb;
+                
                 return UnityMetaFragment(o);
+                //return UniversalFragmentMeta(i, metaInput);
             }
             ENDHLSL
         }
