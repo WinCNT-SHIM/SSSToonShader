@@ -22,7 +22,11 @@ Shader "SSSToonShader/URPToonShaderBasic"
         
         _RimHorizonOffset ("Rim Horizon Offset", Range(-1, 1)) = 0
         _RimVerticalOffset ("Rim Vertical Offset", Range(-1, 1)) = 0
+        
+        [Space(15)][Header(Emission)]
+        [HDR] _EmissionColor ("Emission Color", Color) = (0, 0, 0, 1)
     }
+    
     SubShader
     {
         // SubShader Tags define when and under which conditions a SubShader block or a pass is executed.
@@ -51,6 +55,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
             {
                 float4 positionOS   : POSITION;
                 float2 uv           : TEXCOORD0;
+                float2 lightmapUV   : TEXCOORD1;
                 float3 normalOS     : NORMAL;
             };
 
@@ -81,7 +86,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half4 _ShadowColor2;
                 half4 _SpecularColor;
                 half4 _RimColor;
-
+            
+                half4 _EmissionColor;
+            
                 half _ShadowPower1;     
                 half _ShadowPower2;     
                 half _SpecularPower;    
@@ -89,7 +96,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half _RimThreshold;
                 half _RimHorizonOffset;
                 half _RimVerticalOffset;
-                half _Padding4; // 72Byte?
+                //half _Padding4; // 72Byte?
             CBUFFER_END
 
 ///関数
@@ -252,11 +259,89 @@ Shader "SSSToonShader/URPToonShaderBasic"
 
                 // Rim Lightを足す
                 _FinalColor.rgb = lerp(_FinalColor.rgb, (_FinalColor.rgb + _FinalRim.rgb), _UseRim);
+
+/// Emission
+                float3 emissive = _BaseColor.a * _EmissionColor.rgb;
+                _FinalColor.rgb += emissive; 
                 
                 return _FinalColor;
             }
             ENDHLSL
         }
-        UsePass "Universal Render Pipeline/Lit/ShadowCaster"
+        
+        Pass
+        {
+            Name "META"
+            Tags {"LightMode"="Meta"}
+            Cull Off
+            
+            HLSLPROGRAM
+            
+            #pragma vertex UniversalVertexMeta
+            // #pragma vertex UniversalVertexMeta_Toon
+            // #pragma fragment UniversalFragmentMetaLit
+            #pragma fragment UniversalFragmentMeta_Toon
+            
+            #pragma shader_feature _EMISSION
+            // #pragma shader_feature _METALLICGLOSSMAP
+            // #pragma shader_feature ___ _DETAIL_MULX2
+            // #pragma shader_feature _ _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
+            // #pragma shader_feature EDITOR_VISUALIZATION
+            
+            //#include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            //#include "Packages/com.unity.render-pipelines.universal/Shaders/LitMetaPass.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            //#include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            //#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/MetaInput.hlsl"
+            
+            TEXTURE2D(_BaseMap);
+            SAMPLER(sampler_BaseMap);
+            
+            CBUFFER_START(UnityPerMaterial)
+                float4 _BaseMap_ST;
+            
+                half4 _BaseColor;
+                half4 _ShadowColor1;
+                half4 _ShadowColor2;
+                half4 _SpecularColor;
+                half4 _RimColor;
+            
+                half4 _EmissionColor;
+            
+                half _ShadowPower1;     
+                half _ShadowPower2;     
+                half _SpecularPower;    
+                half _RimPower;
+                half _RimThreshold;
+                half _RimHorizonOffset;
+                half _RimVerticalOffset;
+            CBUFFER_END
+            
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/UniversalMetaPass.hlsl"
+            
+            // Varyings UniversalVertexMeta_Toon(Attributes input)
+            // {
+            //     Varyings output = (Varyings)0;
+            //     output.positionCS = UnityMetaVertexPosition(input.positionOS.xyz, input.uv1, input.uv2);
+            //     output.uv = TRANSFORM_TEX(input.uv0, _BaseMap);
+            //     return output;
+            // }
+            
+            float4 UniversalFragmentMeta_Toon(Varyings i): SV_Target
+            {
+                UnityMetaInput o;
+                o = (UnityMetaInput)0;
+
+                half4 c = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv);
+                o.Albedo = half3(c.rgb * _BaseColor.rgb);
+                //o.Emission = Emission(i.uv.xy);
+                o.Emission = _EmissionColor.rgb;
+                
+                return UnityMetaFragment(o);
+                //return UniversalFragmentMeta(i, metaInput);
+            }
+            ENDHLSL
+        }
+        //UsePass "Universal Render Pipeline/Lit/ShadowCaster"
     }
 }
