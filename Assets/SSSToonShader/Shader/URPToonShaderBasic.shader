@@ -25,6 +25,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
         
         [Space(15)][Header(Emission)]
         [HDR] _EmissionColor ("Emission Color", Color) = (0, 0, 0, 1)
+        // [NoScaleOffset] _EmissionMap ("EmissionMap", 2D) = "black" { }
     }
     
     SubShader
@@ -88,6 +89,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half4 _RimColor;
             
                 half4 _EmissionColor;
+                // float4 _EmissionMap_HDR;
             
                 half _ShadowPower1;     
                 half _ShadowPower2;     
@@ -262,7 +264,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
 
 /// Emission
                 float3 emissive = _BaseColor.a * _EmissionColor.rgb;
-                _FinalColor.rgb += emissive; 
+                // emissive.rgb = DecodeHDREnvironment(half4(emissive, 1.0), _EmissionMap_HDR);
+                _FinalColor.rgb += emissive;
                 
                 return _FinalColor;
             }
@@ -296,6 +299,8 @@ Shader "SSSToonShader/URPToonShaderBasic"
             
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
+            // TEXTURE2D(_EmissionColor);
+            // SAMPLER(sampler_EmissionColor);
             
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
@@ -307,6 +312,7 @@ Shader "SSSToonShader/URPToonShaderBasic"
                 half4 _RimColor;
             
                 half4 _EmissionColor;
+                // float4 _EmissionMap_HDR;
             
                 half _ShadowPower1;     
                 half _ShadowPower2;     
@@ -334,8 +340,9 @@ Shader "SSSToonShader/URPToonShaderBasic"
 
                 half4 c = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv);
                 o.Albedo = half3(c.rgb * _BaseColor.rgb);
-                //o.Emission = Emission(i.uv.xy);
                 o.Emission = _EmissionColor.rgb;
+                // o.Emission = SAMPLE_TEXTURE2D(_EmissionMap, sampler_BaseMap, IN.uv);
+                // o.Emission.rgb = DecodeHDREnvironment(half4(o.Emission, 1.0), _EmissionMap_HDR);
                 
                 return UnityMetaFragment(o);
                 //return UniversalFragmentMeta(i, metaInput);
